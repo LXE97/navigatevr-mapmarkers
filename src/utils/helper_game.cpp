@@ -22,6 +22,14 @@ namespace helper
 		return (a_modindex << 24) | a_localID;
 	}
 
+	uint8_t GetFormIndex(RE::FormID a_formid){
+		return a_formid >> 24;
+	}
+
+	uint32_t GetLocalID(RE::FormID a_formid){
+		return a_formid & 0x00FFFFFF;
+	}
+
 	void HideActivationText(TESObjectREFR* a_target, bool a_hidden)
 	{
 		a_target->extraList.SetExtraFlags(ExtraFlags::Flag::kBlockActivateText, a_hidden);

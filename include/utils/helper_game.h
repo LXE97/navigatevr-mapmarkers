@@ -11,6 +11,8 @@ namespace helper
 	using namespace RE;
 	RE::TESForm* LookupByName(RE::FormType a_typeEnum, const char* a_name);
 	RE::FormID   GetFullFormID(uint8_t a_modindex, RE::FormID a_localID);
+	uint8_t GetFormIndex(RE::FormID a_formid);
+	uint32_t GetLocalID(RE::FormID a_formid);
 
 	void HideActivationText(TESObjectREFR *a_target, bool a_hidden);
 
