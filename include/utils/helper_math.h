@@ -6,44 +6,48 @@
 
 namespace helper
 {
-	using namespace RE;
+    using namespace RE;
 
-	const bool TestBoxCollision(NiTransform& a_origin, NiPoint3& a_extent, NiPoint3& a_collider);
+    void InstallPlayerUpdateHook(std::function<void(void)> update_func);
 
-	RE::NiColor HSV_to_RGB(float h, float s, float v);
+    const bool TestBoxCollision(NiTransform& a_origin, NiPoint3& a_extent, NiPoint3& a_collider);
 
-	RE::NiPoint3 RGBtoHSV(NiColor rgb);
+    RE::NiColor HSV_to_RGB(float h, float s, float v);
 
-	RE::NiPoint3 RGBtoHSV(NiColorA rgb);
+    RE::NiPoint3 RGBtoHSV(NiColor rgb);
 
-	float deg2rad(const float d);
+    RE::NiPoint3 RGBtoHSV(NiColorA rgb);
 
-	float GetAzimuth(NiMatrix3& rot);
+    float deg2rad(const float d);
 
-	RE::NiTransform WorldToLocal(RE::NiTransform& a_parent, RE::NiTransform& a_child);
-	RE::NiPoint3    WorldToLocalPos(RE::NiTransform& a_parent, RE::NiPoint3 const& a_child);
+    float GetAzimuth(NiMatrix3& rot);
 
-	float GetElevation(NiMatrix3& rot);
+    RE::NiTransform WorldToLocal(RE::NiTransform& a_parent, RE::NiTransform& a_child);
+    RE::NiPoint3    WorldToLocalPos(RE::NiTransform& a_parent, RE::NiPoint3 const& a_child);
 
-	float VectorLengthSquared(const NiPoint3& vec);
+    float GetElevation(NiMatrix3& rot);
 
-	float VectorLength(const NiPoint3& vec);
+    float VectorLengthSquared(const NiPoint3& vec);
 
-	float DotProductSafe(const NiPoint3& vec1, const NiPoint3& vec2);
+    float VectorLength(const NiPoint3& vec);
 
-	NiPoint3 VectorNormalized(const NiPoint3& vec);
+    float DotProductSafe(const NiPoint3& vec1, const NiPoint3& vec2);
 
-	NiMatrix3 getRotationAxisAngle(NiPoint3& axis, float theta);
+    NiPoint3 VectorNormalized(const NiPoint3& vec);
 
-	NiMatrix3 RotateBetweenVectors(const NiPoint3& src, const NiPoint3& dest);
+    NiMatrix3 getRotationAxisAngle(NiPoint3& axis, float theta);
 
-	void FaceCamera(RE::NiAVObject* a_target, bool a_x = false, bool a_y = false, bool a_z = true,
-		RE::NiPoint3 a_target_normal = { 1.0, 0.0, 0.0 });
+    NiMatrix3 RotateBetweenVectors(const NiPoint3& src, const NiPoint3& dest);
 
-	NiMatrix3 slerpMatrixAdaptive(NiMatrix3 mat1, NiMatrix3 mat2);
+    void FaceCamera(RE::NiAVObject* a_target, bool a_x = false, bool a_y = false, bool a_z = true,
+        RE::NiPoint3 a_target_normal = { 1.0, 0.0, 0.0 });
 
-	void Quat2Mat(NiMatrix3& matrix, NiQuaternion& quaternion);
+    NiMatrix3 slerpMatrixAdaptive(NiMatrix3 mat1, NiMatrix3 mat2);
 
-	void slerpQuat(float interp, NiQuaternion& q1, NiQuaternion& q2, NiMatrix3& out);
+    void Quat2Mat(NiMatrix3& matrix, NiQuaternion& quaternion);
+
+    void slerpQuat(float interp, NiQuaternion& q1, NiQuaternion& q2, NiMatrix3& out);
+
+    RE::NiPoint2 Rotate2D(RE::NiPoint2 v, float angle);
 
 }

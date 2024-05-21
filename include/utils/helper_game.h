@@ -8,13 +8,14 @@
 
 namespace helper
 {
-	using namespace RE;
+	 void InstallPlayerUpdateHook(std::function<void(void)> a_func);
+
 	RE::TESForm* LookupByName(RE::FormType a_typeEnum, const char* a_name);
 	RE::FormID   GetFullFormID(uint8_t a_modindex, RE::FormID a_localID);
 	uint8_t GetFormIndex(RE::FormID a_formid);
 	uint32_t GetLocalID(RE::FormID a_formid);
 
-	void HideActivationText(TESObjectREFR *a_target, bool a_hidden);
+	void HideActivationText(RE::TESObjectREFR *a_target, bool a_hidden);
 
 	void CastSpellInstant(RE::Actor* a_src, RE::Actor* a_target, RE::SpellItem* sa_pell);
 	void Dispel(RE::Actor* a_src, RE::Actor* a_target, RE::SpellItem* a_spell);
@@ -63,7 +64,7 @@ namespace helper
 	{
 		if (a_target && a_parent)
 		{
-			NiUpdateData ctx;
+			RE::NiUpdateData ctx;
 			a_target->local.translate =
 				a_parent->world.rotate.Transpose() * (a_position - a_parent->world.translate);
 			a_target->Update(ctx);

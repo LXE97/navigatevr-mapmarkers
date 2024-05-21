@@ -14,7 +14,7 @@
 
 using namespace std::literals;
 
-namespace stl
+namespace restl
 {
 	using namespace SKSE::stl;
 
