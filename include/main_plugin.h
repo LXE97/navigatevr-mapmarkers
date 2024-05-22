@@ -12,6 +12,8 @@
 
 namespace vrmapmarkers
 {
+    extern bool g_debug_print;
+
     enum class MapType
     {
         kNone = 0,
@@ -50,11 +52,63 @@ namespace vrmapmarkers
         MapCalibration data;
     };
 
+    struct QuestTarget
+    {
+        RE::TESObjectREFR*   objref;
+        RE::QUEST_DATA::Type type;
+    };
+
+    class MapIcon
+    {
+    public:
+        MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform)
+        {
+            auto pc = RE::PlayerCharacter::GetSingleton();
+            type = GetIconType(a_type);
+            model = art_addon::ArtAddon::Make(icon_path, pc,
+                pc->Get3D(false)->GetObjectByName(
+                    isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
+                a_transform, std::bind(&MapIcon::OnCreation, this));
+            auto foo = 6;
+        }
+        MapIcon(const MapIcon&) = delete;
+        MapIcon& operator=(const MapIcon&) = delete;
+        MapIcon(MapIcon&& other) noexcept : model(std::move(other.model)), type(other.type) {}
+        MapIcon& operator=(MapIcon&& other) noexcept
+        {
+            if (this != &other)
+            {
+                model = std::move(other.model);
+                type = other.type;
+            }
+            return *this;
+        }
+
+    private:
+        static constexpr const char* icon_path = "mapmarker_x.nif";
+
+        static int GetIconType(RE::QUEST_DATA::Type a_type) { return 4; }
+
+        void OnCreation()
+        {
+            if (model && model->Get3D())
+            {
+                int x, y;
+                helper::Arrayize(type, 4, 4, x, y);
+                helper::SetUVCoords(model->Get3D(), x / 4, y / 4);
+                _DEBUGLOG("set coords for {}", type);
+            }
+            else { SKSE::log::error("Map marker creation failed"); }
+        }
+
+        art_addon::ArtAddonPtr model = nullptr;
+        int                    type;
+    };
+
     constexpr const char* g_ini_path = "SKSE/Plugins/vrmapmarkers.ini";
     constexpr const char* g_plugin_name = "Navigate VR - Equipable Dynamic Compass and Maps.esp";
 
     extern bool g_left_hand_mode;
-    extern bool g_debug_print;
 
     void Init();
 
@@ -68,11 +122,11 @@ namespace vrmapmarkers
 
     HeldMap* GetActiveMap();
 
-    std::vector<RE::TESObjectREFR*> GetTrackedRefs();
+    std::vector<QuestTarget> GetTrackedRefs();
 
     RE::TESObjectREFR* GetQuestTarget(RE::BGSQuestObjective* a_obj);
 
-    void AddMarker(RE::TESObjectREFR* a_objref, HeldMap* a_map);
+    void AddMarker(QuestTarget& a_target, HeldMap* a_map);
 
     void ClearMarkers();
 
@@ -86,7 +140,7 @@ namespace vrmapmarkers
 
     RE::NiTransform WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map);
 
-    void InitIcon(art_addon::ArtAddon* a_addon);
+    void InitIcon(int a);
 
     /* returns: true if config file changed */
     bool ReadConfig(const char* a_ini_path);

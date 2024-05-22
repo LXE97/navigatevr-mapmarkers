@@ -24,6 +24,11 @@ namespace helper
             target[2] };
     }
 
+    void Arrayize(int idx, int row, int col, int &x_out, int &y_out){
+        x_out = (idx / col) % row;
+        y_out = idx % col;
+    }
+
     RE::NiTransform WorldToLocal(RE::NiTransform& a_parent, RE::NiTransform& a_child)
     {
         NiTransform result;

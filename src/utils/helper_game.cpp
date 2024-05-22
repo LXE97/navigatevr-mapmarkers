@@ -335,16 +335,6 @@ namespace helper
         return a_handle.IsPlaying();
     }
 
-    RE::TESForm* GetForm(const RE::FormID a_lower_id, std::string a_mod_name)
-    {
-        if (auto file = RE::TESDataHandler::GetSingleton()->LookupModByName(a_mod_name))
-        {
-            return RE::TESForm::LookupByID(
-                file->GetPartialIndex() << (file->IsLight() ? 12 : 24) | a_lower_id);
-        }
-        return nullptr;
-    }
-
     const char* GetObjectModelPath(RE::TESBoundObject* a_obj)
     {
         if (auto model = a_obj->As<TESModelTextureSwap>()) { return model->GetModel(); }

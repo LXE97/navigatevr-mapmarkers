@@ -16,13 +16,19 @@ namespace vrmapmarkers
     bool g_left_hand_mode = false;
 
     // State
-    std::vector<ArtAddonPtr> g_icon_addons;
+    std::vector<MapIcon> g_icon_addons;
 
     // Resources
     int                   g_mod_index = 0;
-    constexpr const char* g_icon_path = "test_marker.nif";
-    const MapCalibration  tamriel_offsets_L = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 }, { 0.0000625, 0.0000625 } };
-    const MapCalibration  tamriel_offsets_R = { { 10, 10 } };
+    RE::TESFaction*       g_dawnguard_faction = nullptr;
+    RE::FormID            g_dawnguard_faction_id = 0x3375;
+    constexpr const char* g_dawnguard_plugin_name = "Dawnguard.esm";
+
+    const MapCalibration  tamriel_offsets_L = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
+         { 0.0000625, 0.0000625 } };
+
+    const MapCalibration  tamriel_offsets_R = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
+         { 0.0000625, 0.0000625 } };
 
     std::vector<HeldMap> g_map_lookup = {
         { 0xE5FF, Tamriel, true, tamriel_offsets_L },
@@ -80,6 +86,9 @@ namespace vrmapmarkers
                 "the plugin file");
         }
 
+        g_dawnguard_faction =
+            helper::GetForm<RE::TESFaction>(g_dawnguard_faction_id, g_dawnguard_plugin_name);
+
         ReadConfig(g_ini_path);
 
         menuchecker::begin();
@@ -98,6 +107,7 @@ namespace vrmapmarkers
         _DEBUGLOG("Load Game: reset state");
 
         g_icon_addons.clear();
+        g_icon_addons.reserve(64);
         if (RE::PlayerCharacter::GetSingleton()->GetCurrent3D()) { UpdateMapMarkers(); }
     }
 
@@ -136,10 +146,10 @@ namespace vrmapmarkers
             if (refs.empty()) { _DEBUGLOG("No tracked quests found"); }
             else
             {
-                for (auto& obj : refs)
+                for (auto& target : refs)
                 {
-                    _DEBUGLOG("Adding marker for {}", obj->GetName());
-                    AddMarker(obj, map);
+                    _DEBUGLOG("Adding marker for {}", target.objref->GetName());
+                    AddMarker(target, map);
                 }
             }
         }
@@ -157,7 +167,7 @@ namespace vrmapmarkers
         {
             mapform = left_worn->formID;
         }
-        if (mapform)
+        if (helper::GetFormIndex(mapform) == g_mod_index)
         {
             if (auto it = std::find_if(g_map_lookup.begin(), g_map_lookup.end(),
                     [mapform](const HeldMap& m) { return m.armor_form == (mapform & 0x00FFFFFF); });
@@ -169,9 +179,9 @@ namespace vrmapmarkers
         return nullptr;
     }
 
-    std::vector<RE::TESObjectREFR*> GetTrackedRefs()
+    std::vector<QuestTarget> GetTrackedRefs()
     {
-        std::vector<RE::TESObjectREFR*> result;
+        std::vector<QuestTarget> result;
 
         for (auto& instance : RE::PlayerCharacter::GetSingleton()->objectives)
         {
@@ -179,7 +189,10 @@ namespace vrmapmarkers
             if (objective->ownerQuest->IsActive() &&
                 objective->state == RE::QUEST_OBJECTIVE_STATE::kDisplayed)
             {
-                if (auto ref = GetQuestTarget(objective)) { result.push_back(ref); }
+                if (auto ref = GetQuestTarget(objective))
+                {
+                    result.push_back({ ref, objective->ownerQuest->GetType() });
+                }
             }
         }
 
@@ -194,6 +207,7 @@ namespace vrmapmarkers
             {
                 auto alias = target->alias;
                 auto quest = a_obj->ownerQuest;
+                _DEBUGLOG("quest type: {}", quest->data.questType.underlying());
                 if (auto it = quest->refAliasMap.find(alias); it != quest->refAliasMap.end())
                 {
                     auto refhandle = it->second;
@@ -204,13 +218,14 @@ namespace vrmapmarkers
         return nullptr;
     }
 
-    void AddMarker(RE::TESObjectREFR* a_objref, HeldMap* a_map)
+    void AddMarker(QuestTarget& a_target, HeldMap* a_map)
     {
+        auto objref = a_target.objref;
         // Check if marker location is inside currently equipped map
-        if (auto current_loc = a_objref->GetCurrentLocation())
+        if (auto current_loc = objref->GetCurrentLocation())
         {
             _DEBUGLOG(
-                "  Quest objective {} location: {}", a_objref->GetName(), current_loc->GetName());
+                "  Quest objective {} location: {}", objref->GetName(), current_loc->GetName());
 
             if (auto ref_toplevel_location = GetRootLocation(current_loc))
             {
@@ -221,18 +236,15 @@ namespace vrmapmarkers
                     (a_map->location_form == HoldLocations::Tamriel &&
                         (ref_toplevel_location->formID & 0x00FFFFFF) != HoldLocations::Solstheim))
                 {
-                    auto position = GetMarkerPosition(a_objref);
+                    auto position = GetMarkerPosition(objref);
 
                     if (TestPointBox2D(
                             position, a_map->data.world_bottom_left, a_map->data.world_top_right))
                     {
                         auto icon_transform = WorldToMap(position, a_map);
 
-                        g_icon_addons.push_back(
-                            ArtAddon::Make(g_icon_path, RE::PlayerCharacter::GetSingleton(),
-                                RE::PlayerCharacter::GetSingleton()->Get3D(false)->GetObjectByName(
-                                    a_map->isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
-                                icon_transform, InitIcon));
+                        g_icon_addons.emplace_back(
+                            MapIcon(a_target.type, a_map->isLeft, icon_transform));
 
                         _DEBUGLOG(" Marker added with local position: {} {} {}",
                             VECTOR(icon_transform.translate));
@@ -241,11 +253,6 @@ namespace vrmapmarkers
                 else { _DEBUGLOG(" Stop: Quest objective not on active map"); }
             }
         }
-    }
-
-    void InitIcon(art_addon::ArtAddon* a_addon)
-    {
-        // TODO: set icon uv coords
     }
 
     void ClearMarkers()
@@ -323,6 +330,12 @@ namespace vrmapmarkers
             { -0.9815594, 0.1236156, 0.1458094 },
             { -0.0964906, 0.3380657, -0.9361630 },
         };
+        const RE::NiPoint3  rpos = { 1.261147, -4.375540, 9.100316 };
+        const RE::NiMatrix3 rrot = {
+            { -0.1650175, 0.9329688, 0.3199038 },
+            { 0.9815594, 0.1236156, 0.1458094 },
+            { 0.0964906, 0.3380657, -0.9361630 },
+        };
 
         RE::NiTransform result;
 
@@ -335,6 +348,10 @@ namespace vrmapmarkers
         {
             result.translate = lpos + lrot * RE::NiPoint3(local.x, local.y, 0.f);
             result.rotate = lrot;
+        } else {
+            result.translate = rpos + rrot * RE::NiPoint3(local.x, local.y, 0.f);
+            result.rotate = rrot;
+            result.translate.x *= -1;
         }
 
         return result;

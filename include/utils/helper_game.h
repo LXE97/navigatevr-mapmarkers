@@ -86,7 +86,16 @@ namespace helper
 	std::string           ReadStringFromIni(std::ifstream& a_file, std::string a_setting);
 	bool                  ReadConfig(const char* a_ini_path);
 
-	RE::TESForm* GetForm(const RE::FormID a_lower_id, std::string a_mod_name);
+    template<typename T>
+    T* GetForm(const RE::FormID a_lower_id, std::string a_mod_name)
+    {
+        if (auto file = RE::TESDataHandler::GetSingleton()->LookupModByName(a_mod_name))
+        {
+            return RE::TESForm::LookupByID<T>(
+                file->GetPartialIndex() << (file->IsLight() ? 12 : 24) | a_lower_id);
+        }
+        return nullptr;
+    }
 
 	const char* GetObjectModelPath(RE::TESBoundObject* a_obj);
 	const char* GetObjectModelPath(RE::TESObjectREFR* a_obj);

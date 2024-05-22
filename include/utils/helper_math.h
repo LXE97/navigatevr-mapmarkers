@@ -20,6 +20,8 @@ namespace helper
 
     float deg2rad(const float d);
 
+ void Arrayize(int idx, int row, int col, int &x_out, int &y_out);
+
     float GetAzimuth(NiMatrix3& rot);
 
     RE::NiTransform WorldToLocal(RE::NiTransform& a_parent, RE::NiTransform& a_child);
