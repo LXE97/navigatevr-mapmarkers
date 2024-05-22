@@ -12,7 +12,9 @@
 
 namespace vrmapmarkers
 {
-    extern bool g_debug_print;
+    extern bool            g_debug_print;
+    extern RE::TESFaction* g_stormcloak_faction;
+    extern RE::TESFaction* g_dawnguard_faction;
 
     enum class MapType
     {
@@ -69,34 +71,49 @@ namespace vrmapmarkers
                 pc->Get3D(false)->GetObjectByName(
                     isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
                 a_transform, std::bind(&MapIcon::OnCreation, this));
-            auto foo = 6;
-        }
-        MapIcon(const MapIcon&) = delete;
-        MapIcon& operator=(const MapIcon&) = delete;
-        MapIcon(MapIcon&& other) noexcept : model(std::move(other.model)), type(other.type) {}
-        MapIcon& operator=(MapIcon&& other) noexcept
-        {
-            if (this != &other)
-            {
-                model = std::move(other.model);
-                type = other.type;
-            }
-            return *this;
         }
 
     private:
         static constexpr const char* icon_path = "mapmarker_x.nif";
 
-        static int GetIconType(RE::QUEST_DATA::Type a_type) { return 4; }
+        static int GetIconType(RE::QUEST_DATA::Type a_type)
+        {
+            if (a_type == RE::QUEST_DATA::Type::kCivilWar &&
+                RE::PlayerCharacter::GetSingleton()->IsInFaction(g_dawnguard_faction))
+            {
+                return 12;
+            }
+            else if (a_type == RE::QUEST_DATA::Type::kDLC01_Vampire &&
+                RE::PlayerCharacter::GetSingleton()->IsInFaction(g_stormcloak_faction))
+            {
+                return 13;
+            }
+            return (int)a_type;
+        }
 
         void OnCreation()
         {
+            _DEBUGLOG("marker creation {}", (void*)this);
             if (model && model->Get3D())
             {
                 int x, y;
                 helper::Arrayize(type, 4, 4, x, y);
-                helper::SetUVCoords(model->Get3D(), x / 4, y / 4);
-                _DEBUGLOG("set coords for {}", type);
+                if (auto shader = helper::GetShaderProperty(model->Get3D(), "Plane"))
+                {
+                    auto oldmat = shader->material;
+                    auto newmat = oldmat->Create();
+                    newmat->CopyMembers(oldmat);
+                    shader->material = newmat;
+                    newmat->IncRef();
+                    oldmat->DecRef();
+
+                    newmat->texCoordOffset[0].x = (float)x / 4;
+                    newmat->texCoordOffset[0].y = (float)y / 4;
+                    newmat->texCoordOffset[1].x = newmat->texCoordOffset[0].x;
+                    newmat->texCoordOffset[1].y = newmat->texCoordOffset[0].y;
+                    _DEBUGLOG("set coords for {}", type);
+                }
+                
             }
             else { SKSE::log::error("Map marker creation failed"); }
         }

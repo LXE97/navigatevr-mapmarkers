@@ -16,19 +16,21 @@ namespace vrmapmarkers
     bool g_left_hand_mode = false;
 
     // State
-    std::vector<MapIcon> g_icon_addons;
+    std::vector<std::unique_ptr<MapIcon>> g_icon_addons;
 
     // Resources
     int                   g_mod_index = 0;
     RE::TESFaction*       g_dawnguard_faction = nullptr;
-    RE::FormID            g_dawnguard_faction_id = 0x3375;
+    RE::FormID            g_dawnguard_faction_id = 0x14217;
     constexpr const char* g_dawnguard_plugin_name = "Dawnguard.esm";
+    RE::TESFaction*       g_stormcloak_faction = nullptr;
+    RE::FormID            g_stormcloak_faction_id = 0x2bf9b;
 
-    const MapCalibration  tamriel_offsets_L = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
-         { 0.0000625, 0.0000625 } };
+    const MapCalibration tamriel_offsets_L = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
+        { 0.0000625, 0.0000625 } };
 
-    const MapCalibration  tamriel_offsets_R = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
-         { 0.0000625, 0.0000625 } };
+    const MapCalibration tamriel_offsets_R = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
+        { 0.0000625, 0.0000625 } };
 
     std::vector<HeldMap> g_map_lookup = {
         { 0xE5FF, Tamriel, true, tamriel_offsets_L },
@@ -89,6 +91,8 @@ namespace vrmapmarkers
         g_dawnguard_faction =
             helper::GetForm<RE::TESFaction>(g_dawnguard_faction_id, g_dawnguard_plugin_name);
 
+        g_stormcloak_faction = RE::TESForm::LookupByID<RE::TESFaction>(g_stormcloak_faction_id);
+
         ReadConfig(g_ini_path);
 
         menuchecker::begin();
@@ -107,7 +111,6 @@ namespace vrmapmarkers
         _DEBUGLOG("Load Game: reset state");
 
         g_icon_addons.clear();
-        g_icon_addons.reserve(64);
         if (RE::PlayerCharacter::GetSingleton()->GetCurrent3D()) { UpdateMapMarkers(); }
     }
 
@@ -243,8 +246,8 @@ namespace vrmapmarkers
                     {
                         auto icon_transform = WorldToMap(position, a_map);
 
-                        g_icon_addons.emplace_back(
-                            MapIcon(a_target.type, a_map->isLeft, icon_transform));
+                        g_icon_addons.emplace_back(std::make_unique<MapIcon>(
+                            a_target.type, a_map->isLeft, icon_transform));
 
                         _DEBUGLOG(" Marker added with local position: {} {} {}",
                             VECTOR(icon_transform.translate));
@@ -317,7 +320,6 @@ namespace vrmapmarkers
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right)
     {
-        return true;
         return (a_point.x > bottom_left.x && a_point.x < top_right.x && a_point.y > bottom_left.y &&
             a_point.y < top_right.y);
     }
@@ -348,10 +350,12 @@ namespace vrmapmarkers
         {
             result.translate = lpos + lrot * RE::NiPoint3(local.x, local.y, 0.f);
             result.rotate = lrot;
-        } else {
+        }
+        else
+        {
             result.translate = rpos + rrot * RE::NiPoint3(local.x, local.y, 0.f);
             result.rotate = rrot;
-            result.translate.x *= -1;
+            result.translate.y *= -1.f;
         }
 
         return result;
