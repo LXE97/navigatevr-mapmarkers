@@ -3,6 +3,7 @@
 ### User requirements:
 * SKSE
 * Address Library VR
+* Navigate VR
 
 
 ## Build instructions:
