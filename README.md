@@ -12,4 +12,4 @@
 4. install VSCode
 5. open this repository's root folder in VSCode and it will automatically configure itself
 
-This project is built with commonlibsse-ng-vr, but it uses PlayerCharacter.h from CommonLibVR because I haven't gotten around to migrating yet.
+This project is built with commonlibsse-ng-vr, but it uses PlayerCharacter.h from [CommonLibVR](https://github.com/alandtse/CommonLibVR) because I'm in the process of migrating
