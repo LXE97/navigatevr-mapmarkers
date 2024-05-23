@@ -13,6 +13,7 @@ namespace mapmarker
     bool  g_use_symbols = true;
     int   selected_border = 0;
     float g_border_scale = 1.f;
+    float g_symbol_scale = 1.f;
 
     // State
     std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
@@ -80,6 +81,10 @@ namespace mapmarker
                 int x, y;
                 helper::Arrayize(type, 4, 4, x, y);
                 helper::SetUvUnique(model->Get3D(), (float)x / 4, (float)y / 4, "Symbol");
+                if (auto symbol = model->Get3D()->GetObjectByName("Symbol"))
+                {
+                    symbol->local.scale = g_symbol_scale;
+                }
             }
             int x, y;
             helper::Arrayize(selected_border, 2, 2, x, y);
@@ -236,7 +241,6 @@ namespace mapmarker
                         result.y);
                     return result;
                 }
-                //else if (loc->formID == Tamriel || (loc->formID & 0x00ffffff) == Solstheim) {}
             }
             auto pos3 = a_objref->GetPosition();
             result = { pos3.x, pos3.y };
@@ -301,10 +305,9 @@ namespace mapmarker
             result.rotate = lrot;
         }
         else
-        {
-            result.translate = rpos + rrot * RE::NiPoint3(x, y, 0.f);
+        {//TODO: more accurate offset
+            result.translate = rpos + rrot * RE::NiPoint3(x-41, y, 0.f);
             result.rotate = rrot;
-            result.translate.y *= -1.f;
         }
 
         return result;

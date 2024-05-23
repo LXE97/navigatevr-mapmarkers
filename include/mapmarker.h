@@ -10,9 +10,10 @@ namespace mapmarker
     extern int             g_mod_index;
 
     // User Settings
-    extern bool g_use_symbols;
-    extern int  selected_border;
+    extern bool  g_use_symbols;
+    extern int   selected_border;
     extern float g_border_scale;
+    extern float g_symbol_scale;
 
     enum HoldLocations
     {

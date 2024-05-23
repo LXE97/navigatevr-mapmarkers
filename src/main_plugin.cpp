@@ -75,7 +75,7 @@ namespace vrmapmarkers
         if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0)
         {
             ReadConfig(g_ini_path);
-            
+
             mapmarker::ClearMarkers();
             mapmarker::UpdateMapMarkers();
         }
@@ -123,7 +123,9 @@ namespace vrmapmarkers
                     mapmarker::g_use_symbols = helper::ReadIntFromIni(config, "bUseSymbols");
                     mapmarker::selected_border = helper::ReadIntFromIni(config, "iBorder") % 4;
                     mapmarker::g_border_scale =
-                        std::clamp(helper::ReadFloatFromIni(config, "fScale"), 0.2f, 10.f);
+                        std::clamp(helper::ReadFloatFromIni(config, "fBorderScale"), 0.2f, 10.f);
+                    mapmarker::g_symbol_scale =
+                        std::clamp(helper::ReadFloatFromIni(config, "fSymbolScale"), 0.2f, 10.f);
                     g_debug_print = helper::ReadIntFromIni(config, "bDebug");
 
                     config.close();
