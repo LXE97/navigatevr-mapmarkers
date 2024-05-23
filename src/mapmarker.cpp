@@ -13,11 +13,13 @@ namespace mapmarker
 
     int g_mod_index = 0;
 
-    const MapCalibration tamriel_offsets_L = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
-        { 0.0000625, 0.0000625 } };
+    const MapCalibration tamriel_offsets_L = { { -200000, -140000 }, { 200000, 140000 },
+        { 1.067079691252442e-04, -1.031507859361144e-07, 20.223986263997000 },
+        { -3.421453365489117e-06, 1.043277726965344e-04, 14.342974703074040 } };
 
-    const MapCalibration tamriel_offsets_R = { { 0, 0 }, { -200000, -150000 }, { 200000, 150000 },
-        { 0.0000625, 0.0000625 } };
+    const MapCalibration tamriel_offsets_R = { { -200000, -140000 }, { 200000, 140000 },
+        { 1.067079691252442e-04, -1.031507859361144e-07, 20.223986263997000 },
+        { -3.421453365489117e-06, 1.043277726965344e-04, 14.342974703074040 } };
 
     std::vector<HeldMap> g_map_lookup = {
         { 0xE5FF, Tamriel, true, tamriel_offsets_L },
@@ -268,6 +270,7 @@ namespace mapmarker
 
     RE::NiTransform WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map)
     {
+        // Transform from hand to map "origin node"
         const RE::NiPoint3  lpos = { -1.261147, -4.375540, 9.100316 };
         const RE::NiMatrix3 lrot = {
             { -0.1650175, -0.9329688, -0.3199038 },
@@ -283,19 +286,22 @@ namespace mapmarker
 
         RE::NiTransform result;
 
-        auto local =
-            helper::Rotate2D(a_world_pos - a_map->data.world_bottom_left, -a_map->data.angle);
-        local.x *= a_map->data.xy_scale.x;
-        local.y *= a_map->data.xy_scale.y;
+        // Transform world coordinates to held map coordinates
+        auto& m1 = a_map->data.upper;
+        auto& m2 = a_map->data.lower;
 
+        float x = m1.x * a_world_pos.x + m1.y * a_world_pos.y + m1.z;
+        float y = m2.x * a_world_pos.x + m2.y * a_world_pos.y + m2.z;
+
+        // Put the map coordinates into local hand space
         if (a_map->isLeft)
         {
-            result.translate = lpos + lrot * RE::NiPoint3(local.x, local.y, 0.f);
+            result.translate = lpos + lrot * RE::NiPoint3(x, y, 0.f);
             result.rotate = lrot;
         }
         else
         {
-            result.translate = rpos + rrot * RE::NiPoint3(local.x, local.y, 0.f);
+            result.translate = rpos + rrot * RE::NiPoint3(x, y, 0.f);
             result.rotate = rrot;
             result.translate.y *= -1.f;
         }

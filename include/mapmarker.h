@@ -24,15 +24,17 @@ namespace mapmarker
         Solstheim = 0x16E2A,
     };
 
-
     struct MapCalibration
-    {  // texture offset
-        RE::NiPoint2 local_bottom_left;
-        // world coordinates mapping
+    {
+        // world bounds, for checking if point should be drawn
         RE::NiPoint2 world_bottom_left;
         RE::NiPoint2 world_top_right;
-        RE::NiPoint2 xy_scale;
-        float        angle;
+
+        // Affine transform obtained via the method described here:
+        // https://stackoverflow.com/a/2756165
+        RE::NiPoint3 upper;
+        RE::NiPoint3 lower;
+
     };
 
     struct HeldMap
