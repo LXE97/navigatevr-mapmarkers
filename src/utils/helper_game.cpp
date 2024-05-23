@@ -150,6 +150,24 @@ namespace helper
         }
     }
 
+    void SetUvUnique(NiAVObject* a_target, float a_x, float a_y, const char* a_nodename)
+    {
+        if (auto shader = helper::GetShaderProperty(a_target, a_nodename))
+        {
+            auto oldmat = shader->material;
+            auto newmat = oldmat->Create();
+            newmat->CopyMembers(oldmat);
+            shader->material = newmat;
+            newmat->IncRef();
+            oldmat->DecRef();
+
+            newmat->texCoordOffset[0].x = a_x;
+            newmat->texCoordOffset[0].y = a_y;
+            newmat->texCoordOffset[1].x = newmat->texCoordOffset[0].x;
+            newmat->texCoordOffset[1].y = newmat->texCoordOffset[0].y;
+        }
+    }
+
     void SetSpecularMult() {}
     void SetSpecularColor() {}
 
@@ -260,10 +278,12 @@ namespace helper
                         } catch (std::invalid_argument)
                         {}
                         SKSE::log::error("Bad mod ini, please reset it");
-                        return 0;
                     }
                 }
             }
+            SKSE::log::error("ini error: {} not found", a_setting);
+            a_file.clear();
+            a_file.seekg(0, a_file.beg);
         }
 
         return 0.f;
@@ -293,10 +313,12 @@ namespace helper
                         } catch (std::invalid_argument)
                         {}
                         SKSE::log::error("Bad mod ini, please reset it");
-                        return 0;
                     }
                 }
             }
+            SKSE::log::error("ini error: {} not found", a_setting);
+            a_file.clear();
+            a_file.seekg(0, std::ios::beg);
         }
 
         return 0;
@@ -329,6 +351,9 @@ namespace helper
                     }
                 }
             }
+            SKSE::log::error("ini error: {} not found", a_setting);
+            a_file.clear();
+            a_file.seekg(0, std::ios::beg);
         }
 
         return "";

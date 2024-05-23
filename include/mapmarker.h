@@ -7,7 +7,12 @@ namespace mapmarker
 {
     extern RE::TESFaction* g_stormcloak_faction;
     extern RE::TESFaction* g_dawnguard_faction;
-    extern int g_mod_index;
+    extern int             g_mod_index;
+
+    // User Settings
+    extern bool g_use_symbols;
+    extern int  selected_border;
+    extern float g_border_scale;
 
     enum HoldLocations
     {
@@ -34,7 +39,6 @@ namespace mapmarker
         // https://stackoverflow.com/a/2756165
         RE::NiPoint3 upper;
         RE::NiPoint3 lower;
-
     };
 
     struct HeldMap

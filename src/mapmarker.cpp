@@ -9,9 +9,14 @@ namespace mapmarker
     RE::TESFaction* g_dawnguard_faction = nullptr;
     RE::TESFaction* g_stormcloak_faction = nullptr;
 
-    std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
+    // User Settings
+    bool  g_use_symbols = true;
+    int   selected_border = 0;
+    float g_border_scale = 1.f;
 
-    int g_mod_index = 0;
+    // State
+    std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
+    int                                              g_mod_index = 0;
 
     const MapCalibration tamriel_offsets_L = { { -200000, -140000 }, { 200000, 140000 },
         { 1.067079691252442e-04, -1.031507859361144e-07, 20.223986263997000 },
@@ -70,22 +75,18 @@ namespace mapmarker
         _DEBUGLOG("marker creation {}", (void*)this);
         if (model && model->Get3D())
         {
-            int x, y;
-            helper::Arrayize(type, 4, 4, x, y);
-            if (auto shader = helper::GetShaderProperty(model->Get3D(), "Plane"))
+            if (g_use_symbols)
             {
-                auto oldmat = shader->material;
-                auto newmat = oldmat->Create();
-                newmat->CopyMembers(oldmat);
-                shader->material = newmat;
-                newmat->IncRef();
-                oldmat->DecRef();
-
-                newmat->texCoordOffset[0].x = (float)x / 4;
-                newmat->texCoordOffset[0].y = (float)y / 4;
-                newmat->texCoordOffset[1].x = newmat->texCoordOffset[0].x;
-                newmat->texCoordOffset[1].y = newmat->texCoordOffset[0].y;
-                _DEBUGLOG("set coords for {}", type);
+                int x, y;
+                helper::Arrayize(type, 4, 4, x, y);
+                helper::SetUvUnique(model->Get3D(), (float)x / 4, (float)y / 4, "Symbol");
+            }
+            int x, y;
+            helper::Arrayize(selected_border, 2, 2, x, y);
+            helper::SetUvUnique(model->Get3D(), (float)x / 2, (float)y / 2, "Border");
+            if (auto border = model->Get3D()->GetObjectByName("Border"))
+            {
+                border->local.scale = g_border_scale;
             }
         }
         else { SKSE::log::error("Map marker creation failed"); }
