@@ -126,6 +126,10 @@ namespace vrmapmarkers
                         std::clamp(helper::ReadFloatFromIni(config, "fBorderScale"), 0.2f, 10.f);
                     mapmarker::g_symbol_scale =
                         std::clamp(helper::ReadFloatFromIni(config, "fSymbolScale"), 0.2f, 10.f);
+                    mapmarker::g_use_local_scale = helper::ReadIntFromIni(config, "bUseLocalScale") % 4;
+                    mapmarker::g_show_playermarker = helper::ReadIntFromIni(config, "bShowCustomMarker") % 4;
+                    mapmarker::g_rotate_border = helper::ReadIntFromIni(config, "bRandomRotation") % 4;
+
                     g_debug_print = helper::ReadIntFromIni(config, "bDebug");
 
                     config.close();

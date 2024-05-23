@@ -2,46 +2,50 @@
 
 #include "main_plugin.h"
 
+#include <cstdlib>
+
 namespace mapmarker
 {
-    const auto      kRightMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModMouth;
-    const auto      kLeftMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModNeck;
-    RE::TESFaction* g_dawnguard_faction = nullptr;
-    RE::TESFaction* g_stormcloak_faction = nullptr;
+    const auto       kRightMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModMouth;
+    const auto       kLeftMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModNeck;
+    const RE::FormID kMarkerID = 0x34;
+    const float      kMapWidth = 40.f;
+    const float      kMapHeight = 20.f;
+    RE::TESFaction*  g_dawnguard_faction = nullptr;
+    RE::TESFaction*  g_stormcloak_faction = nullptr;
 
     // User Settings
     bool  g_use_symbols = true;
     int   selected_border = 0;
     float g_border_scale = 1.f;
     float g_symbol_scale = 1.f;
+    bool  g_use_local_scale = true;
+    bool  g_show_playermarker = false;
+    bool  g_rotate_border = true;
 
     // State
     std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
     int                                              g_mod_index = 0;
 
-    const MapCalibration tamriel_offsets_L = { { -200000, -140000 }, { 200000, 140000 },
-        { 1.067079691252442e-04, -1.031507859361144e-07, 20.223986263997000 },
-        { -3.421453365489117e-06, 1.043277726965344e-04, 14.342974703074040 } };
-
-    const MapCalibration tamriel_offsets_R = { { -200000, -140000 }, { 200000, 140000 },
-        { 1.067079691252442e-04, -1.031507859361144e-07, 20.223986263997000 },
+    const MapCalibration tamriel_offsets = { { 1.067079691252442e-04, -1.031507859361144e-07,
+                                                 20.223986263997000 },
         { -3.421453365489117e-06, 1.043277726965344e-04, 14.342974703074040 } };
 
     std::vector<HeldMap> g_map_lookup = {
-        { 0xE5FF, Tamriel, true, tamriel_offsets_L },
-        { 0XE600, Tamriel, false, tamriel_offsets_R },
+        { 0xE5FF, Tamriel, true, tamriel_offsets },
+        { 0XE600, Tamriel, false, tamriel_offsets },
         { 0X171E3, Solstheim, true },
         { 0X171E4, Solstheim, false },
-        { 0X3A353, Tamriel, true, tamriel_offsets_L },
-        { 0X3A354, Tamriel, true, tamriel_offsets_L },
-        { 0X3A355, Tamriel, true, tamriel_offsets_L },  // wyrmstooth
-        { 0X3A356, Tamriel, true, tamriel_offsets_L },  // bruma
-        { 0X3A357, Tamriel, false, tamriel_offsets_R },
-        { 0X3A358, Tamriel, false, tamriel_offsets_R },
-        { 0X3A359, Tamriel, false, tamriel_offsets_R },  // wyrmstooth
-        { 0X3A35A, Tamriel, false, tamriel_offsets_R },  // bruma
-        { 0X74B02, Tamriel, true, tamriel_offsets_L },
-        { 0X74B03, Tamriel, false, tamriel_offsets_R },
+        { 0X3A353, Tamriel, true, tamriel_offsets },
+        { 0X3A354, Tamriel, true, tamriel_offsets },
+        { 0X3A355, Tamriel, true, tamriel_offsets },  // wyrmstooth
+        { 0X3A356, Tamriel, true, tamriel_offsets },  // bruma
+        { 0X3A357, Tamriel, false, tamriel_offsets },
+        { 0X3A358, Tamriel, false, tamriel_offsets },
+        { 0X3A359, Tamriel, false, tamriel_offsets },  // wyrmstooth
+        { 0X3A35A, Tamriel, false, tamriel_offsets },  // bruma
+        { 0X74B02, Tamriel, true, tamriel_offsets },
+        { 0X74B03, Tamriel, false, tamriel_offsets },
         { 0XA378E, Whiterun, true },
         { 0XA378F, Whiterun, false },
         { 0XB2191, Haafingar, true },
@@ -76,23 +80,34 @@ namespace mapmarker
         _DEBUGLOG("marker creation {}", (void*)this);
         if (model && model->Get3D())
         {
-            if (g_use_symbols)
+            auto symbol = model->Get3D()->GetObjectByName("Symbol");
+            auto border = model->Get3D()->GetObjectByName("Border");
+
+            // Select symbol and border
+            if (g_use_symbols && symbol)
             {
                 int x, y;
                 helper::Arrayize(type, 4, 4, x, y);
-                helper::SetUvUnique(model->Get3D(), (float)x / 4, (float)y / 4, "Symbol");
-                if (auto symbol = model->Get3D()->GetObjectByName("Symbol"))
+                helper::SetUvUnique(symbol, (float)x / 4, (float)y / 4);
+                symbol->local.scale = g_symbol_scale;
+            }
+
+            if (border)
+            {
+                int x, y;
+                helper::Arrayize(selected_border, 2, 2, x, y);
+                helper::SetUvUnique(border, (float)x / 2, (float)y / 2);
+                border->local.scale = g_border_scale;
+
+                if (g_rotate_border)
                 {
-                    symbol->local.scale = g_symbol_scale;
+                    auto angle = static_cast<float>(std::rand() % 360);
+                    border->parent->local.rotate.SetEulerAnglesXYZ(
+                        { 0, 0, helper::deg2rad(angle) });
                 }
             }
-            int x, y;
-            helper::Arrayize(selected_border, 2, 2, x, y);
-            helper::SetUvUnique(model->Get3D(), (float)x / 2, (float)y / 2, "Border");
-            if (auto border = model->Get3D()->GetObjectByName("Border"))
-            {
-                border->local.scale = g_border_scale;
-            }
+
+            // TODO: offset if it's hanging off the map edge
         }
         else { SKSE::log::error("Map marker creation failed"); }
     }
@@ -105,6 +120,9 @@ namespace mapmarker
             if (refs.empty()) { _DEBUGLOG("No tracked quests found"); }
             else
             {
+                // for border rotation to be consistent(>.>) between refreshes:
+                std::srand(1);
+
                 for (auto& target : refs)
                 {
                     _DEBUGLOG("Adding marker for {}", target.objref->GetName());
@@ -155,6 +173,18 @@ namespace mapmarker
             }
         }
 
+        if (g_show_playermarker)
+        {
+            if (auto custom = RE::PlayerCharacter::GetSingleton()->playerMapMarker)
+                if (auto ptr = custom.get())
+                {
+                    if (auto ref = ptr.get())
+                    {
+                        result.push_back({ ref, RE::QUEST_DATA::Type::kNone });
+                    }
+                }
+        }
+
         return result;
     }
 
@@ -180,8 +210,10 @@ namespace mapmarker
     void AddMarker(QuestTarget& a_target, HeldMap* a_map)
     {
         auto objref = a_target.objref;
+        bool valid_marker = false;
+
         // Check if marker location is inside currently equipped map
-        if (auto current_loc = objref->GetCurrentLocation())
+        if (auto current_loc = objref->GetCurrentLocation(); current_loc)
         {
             _DEBUGLOG(
                 "  Quest objective {} location: {}", objref->GetName(), current_loc->GetName());
@@ -191,25 +223,40 @@ namespace mapmarker
                 _DEBUGLOG("    Quest location {} root location: {}", current_loc->GetName(),
                     ref_toplevel_location->GetName());
 
+                // TODO: need to check worldspace for mod refs that have no location assigned
                 if (a_map->location_form == (ref_toplevel_location->formID & 0x00FFFFFF) ||
                     (a_map->location_form == HoldLocations::Tamriel &&
                         (ref_toplevel_location->formID & 0x00FFFFFF) != HoldLocations::Solstheim))
                 {
-                    auto position = GetMarkerPosition(objref);
-
-                    if (TestPointBox2D(
-                            position, a_map->data.world_bottom_left, a_map->data.world_top_right))
-                    {
-                        auto icon_transform = WorldToMap(position, a_map);
-
-                        g_icon_addons.emplace_back(std::make_unique<MapIcon>(
-                            a_target.type, a_map->isLeft, icon_transform));
-
-                        _DEBUGLOG(" Marker added with local position: {} {} {}",
-                            VECTOR(icon_transform.translate));
-                    }
+                    valid_marker = true;
                 }
                 else { _DEBUGLOG(" Stop: Quest objective not on active map"); }
+            }
+        }
+        else if (auto base = objref->GetBaseObject(); base && base->GetFormID() == kMarkerID)
+        {  // allow player marker to bypass location checks
+            valid_marker = g_show_playermarker;
+        }
+
+        if (valid_marker)
+        {
+            auto position = GetMarkerPosition(objref);
+
+            auto icon_coords = WorldToMap(position, a_map);
+            _DEBUGLOG("    local map coords: {} {}", icon_coords.x, icon_coords.y);
+
+            // TODO: replace with checking distance from border, for marker masking
+            // Check if local map coordinates are within the map model bounds
+            if (TestPointBox2D(
+                    { icon_coords.x, icon_coords.y }, { 0, 0 }, { kMapWidth, kMapHeight }))
+            {
+                auto icon_transform = MapToHand(icon_coords, a_map->isLeft);
+
+                g_icon_addons.emplace_back(
+                    std::make_unique<MapIcon>(a_target.type, a_map->isLeft, icon_transform));
+
+                _DEBUGLOG(" Marker added with local position: {} {} {}",
+                    VECTOR(icon_transform.translate));
             }
         }
     }
@@ -273,7 +320,21 @@ namespace mapmarker
             a_point.y < top_right.y);
     }
 
-    RE::NiTransform WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map)
+    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map)
+    {
+        RE::NiPoint2 result;
+
+        // Transform world coordinates to held map coordinates
+        auto& m1 = a_map->data.upper;
+        auto& m2 = a_map->data.lower;
+
+        result.x = m1.x * a_world_pos.x + m1.y * a_world_pos.y + m1.z;
+        result.y = m2.x * a_world_pos.x + m2.y * a_world_pos.y + m2.z;
+
+        return result;
+    }
+
+    RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft)
     {
         // Transform from hand to map "origin node"
         const RE::NiPoint3  lpos = { -1.261147, -4.375540, 9.100316 };
@@ -291,32 +352,24 @@ namespace mapmarker
 
         RE::NiTransform result;
 
-        // Transform world coordinates to held map coordinates
-        auto& m1 = a_map->data.upper;
-        auto& m2 = a_map->data.lower;
-
-        float x = m1.x * a_world_pos.x + m1.y * a_world_pos.y + m1.z;
-        float y = m2.x * a_world_pos.x + m2.y * a_world_pos.y + m2.z;
-
         // Put the map coordinates into local hand space
-        if (a_map->isLeft)
+        if (isLeft)
         {
-            result.translate = lpos + lrot * RE::NiPoint3(x, y, 0.f);
+            result.translate = lpos + lrot * RE::NiPoint3(a_coords.x, a_coords.y, 0.f);
             result.rotate = lrot;
         }
         else
-        {//TODO: more accurate offset
-            result.translate = rpos + rrot * RE::NiPoint3(x-41, y, 0.f);
+        {  //TODO: more accurate offset
+            result.translate = rpos + rrot * RE::NiPoint3(a_coords.x - 41, a_coords.y, 0.f);
             result.rotate = rrot;
         }
 
         return result;
-    }
+    };
 
     void ClearMarkers()
     {
         _DEBUGLOG("Clearing markers");
         g_icon_addons.clear();
     }
-
 }

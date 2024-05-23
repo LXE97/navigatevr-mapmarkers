@@ -14,6 +14,9 @@ namespace mapmarker
     extern int   selected_border;
     extern float g_border_scale;
     extern float g_symbol_scale;
+    extern bool  g_use_local_scale;
+    extern bool  g_show_playermarker;
+    extern bool  g_rotate_border;
 
     enum HoldLocations
     {
@@ -32,10 +35,6 @@ namespace mapmarker
 
     struct MapCalibration
     {
-        // world bounds, for checking if point should be drawn
-        RE::NiPoint2 world_bottom_left;
-        RE::NiPoint2 world_top_right;
-
         // Affine transform obtained via the method described here:
         // https://stackoverflow.com/a/2756165
         RE::NiPoint3 upper;
@@ -62,7 +61,7 @@ namespace mapmarker
         MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform);
 
     private:
-        static constexpr const char* icon_path = "mapmarker_x.nif";
+        static constexpr const char* icon_path = "NavigateVRAddon/mapmarker.nif";
 
         static int GetIconType(RE::QUEST_DATA::Type a_type)
         {
@@ -105,6 +104,8 @@ namespace mapmarker
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right);
 
-    RE::NiTransform WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map);
+    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map);
+
+    RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft);
 
 }

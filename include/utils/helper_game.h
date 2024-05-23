@@ -71,7 +71,7 @@ namespace helper
         }
     }
 
-    void SetUvUnique(RE::NiAVObject* a_target, float a_x, float a_y, const char* a_nodename);
+    void SetUvUnique(RE::NiAVObject* a_target, float a_x, float a_y, const char* a_nodename = nullptr);
 
     void        PrintActorModelEffects(RE::TESObjectREFR* a_actor);
     void        PrintPlayerShaderEffects();
