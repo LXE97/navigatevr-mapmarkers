@@ -250,9 +250,17 @@ namespace helper
                     {
                         a_file.clear();
                         a_file.seekg(0, a_file.beg);
-                        auto val = std::stof(line.substr(found + 1));
-                        SKSE::log::trace("{} : {}", a_setting, val);
-                        return val;
+                        try
+                        {
+                            auto val = std::stof(line.substr(found + 1));
+                            SKSE::log::trace("{} : {}", a_setting, val);
+                            return val;
+                        } catch (std::out_of_range)
+                        {
+                        } catch (std::invalid_argument)
+                        {}
+                        SKSE::log::error("Bad mod ini, please reset it");
+                        return 0;
                     }
                 }
             }
@@ -275,9 +283,17 @@ namespace helper
                     {
                         a_file.clear();
                         a_file.seekg(0, std::ios::beg);
-                        auto val = std::stoi(line.substr(found + 1));
-                        SKSE::log::trace("{} : {}", a_setting, val);
-                        return val;
+                        try
+                        {
+                            auto val = std::stoi(line.substr(found + 1));
+                            SKSE::log::trace("{} : {}", a_setting, val);
+                            return val;
+                        } catch (std::out_of_range)
+                        {
+                        } catch (std::invalid_argument)
+                        {}
+                        SKSE::log::error("Bad mod ini, please reset it");
+                        return 0;
                     }
                 }
             }
