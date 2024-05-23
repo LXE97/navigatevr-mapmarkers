@@ -60,12 +60,12 @@ namespace mapmarker
         static int GetIconType(RE::QUEST_DATA::Type a_type)
         {
             if (a_type == RE::QUEST_DATA::Type::kCivilWar &&
-                RE::PlayerCharacter::GetSingleton()->IsInFaction(g_dawnguard_faction))
+                RE::PlayerCharacter::GetSingleton()->IsInFaction(g_stormcloak_faction))
             {
                 return 12;
             }
             else if (a_type == RE::QUEST_DATA::Type::kDLC01_Vampire &&
-                RE::PlayerCharacter::GetSingleton()->IsInFaction(g_stormcloak_faction))
+                RE::PlayerCharacter::GetSingleton()->IsInFaction(g_dawnguard_faction))
             {
                 return 13;
             }
