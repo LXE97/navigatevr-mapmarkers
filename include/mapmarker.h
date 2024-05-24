@@ -58,7 +58,8 @@ namespace mapmarker
     class MapIcon
     {
     public:
-        MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform);
+        MapIcon(
+            RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform, bool a_global);
 
     private:
         static constexpr const char* icon_path = "NavigateVRAddon/mapmarker.nif";
@@ -82,17 +83,18 @@ namespace mapmarker
 
         art_addon::ArtAddonPtr model = nullptr;
         int                    type;
+        bool                   global = false;
     };
 
     void UpdateMapMarkers();
 
-    HeldMap* GetActiveMap();
+    const HeldMap* GetActiveMap();
 
     std::vector<QuestTarget> GetTrackedRefs();
 
     RE::TESObjectREFR* GetQuestTarget(RE::BGSQuestObjective* a_obj);
 
-    void AddMarker(QuestTarget& a_target, HeldMap* a_map);
+    void AddMarker(QuestTarget& a_target, const HeldMap* a_map);
 
     void ClearMarkers();
 
@@ -104,8 +106,12 @@ namespace mapmarker
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right);
 
-    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map);
+    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, const HeldMap* a_map);
 
     RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft);
+
+    bool IsSkyrim(const HeldMap* a_map);
+    
+    bool IsSolstheim(const HeldMap* a_map);
 
 }

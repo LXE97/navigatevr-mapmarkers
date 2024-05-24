@@ -1,6 +1,7 @@
 #include "mapmarker.h"
 
 #include "main_plugin.h"
+#include "mapmarker_resources.h"
 
 #include <cstdlib>
 
@@ -9,8 +10,8 @@ namespace mapmarker
     const auto       kRightMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModMouth;
     const auto       kLeftMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModNeck;
     const RE::FormID kMarkerID = 0x34;
-    const float      kMapWidth = 40.f;
-    const float      kMapHeight = 20.f;
+    const float      kMapWidth = 41.4f;
+    const float      kMapHeight = 28.8f;
     RE::TESFaction*  g_dawnguard_faction = nullptr;
     RE::TESFaction*  g_stormcloak_faction = nullptr;
 
@@ -27,49 +28,11 @@ namespace mapmarker
     std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
     int                                              g_mod_index = 0;
 
-    const MapCalibration tamriel_offsets = { { 1.067079691252442e-04, -1.031507859361144e-07,
-                                                 20.223986263997000 },
-        { -3.421453365489117e-06, 1.043277726965344e-04, 14.342974703074040 } };
-
-    std::vector<HeldMap> g_map_lookup = {
-        { 0xE5FF, Tamriel, true, tamriel_offsets },
-        { 0XE600, Tamriel, false, tamriel_offsets },
-        { 0X171E3, Solstheim, true },
-        { 0X171E4, Solstheim, false },
-        { 0X3A353, Tamriel, true, tamriel_offsets },
-        { 0X3A354, Tamriel, true, tamriel_offsets },
-        { 0X3A355, Tamriel, true, tamriel_offsets },  // wyrmstooth
-        { 0X3A356, Tamriel, true, tamriel_offsets },  // bruma
-        { 0X3A357, Tamriel, false, tamriel_offsets },
-        { 0X3A358, Tamriel, false, tamriel_offsets },
-        { 0X3A359, Tamriel, false, tamriel_offsets },  // wyrmstooth
-        { 0X3A35A, Tamriel, false, tamriel_offsets },  // bruma
-        { 0X74B02, Tamriel, true, tamriel_offsets },
-        { 0X74B03, Tamriel, false, tamriel_offsets },
-        { 0XA378E, Whiterun, true },
-        { 0XA378F, Whiterun, false },
-        { 0XB2191, Haafingar, true },
-        { 0XB2192, Falkreath, true },
-        { 0XB2193, Rift, true },
-        { 0XB2194, Reach, true },
-        { 0XB2195, Eastmarch, true },
-        { 0XB2196, Pale, true },
-        { 0XB2197, Winterhold, true },
-        { 0XB2198, Hjaalmarch, true },
-        { 0XB2199, Haafingar, false },
-        { 0XB219A, Falkreath, false },
-        { 0XB219B, Rift, false },
-        { 0XB219C, Reach, false },
-        { 0XB219D, Eastmarch, false },
-        { 0XB219E, Pale, false },
-        { 0XB219F, Winterhold, false },
-        { 0XB21A0, Hjaalmarch, false },
-    };
-
-    MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform)
+    MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform, bool a_global)
     {
         auto pc = RE::PlayerCharacter::GetSingleton();
         type = GetIconType(a_type);
+        global = a_global;
         model = art_addon::ArtAddon::Make(icon_path, pc,
             pc->Get3D(false)->GetObjectByName(isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
             a_transform, std::bind(&MapIcon::OnCreation, this));
@@ -82,6 +45,8 @@ namespace mapmarker
         {
             auto symbol = model->Get3D()->GetObjectByName("Symbol");
             auto border = model->Get3D()->GetObjectByName("Border");
+
+            if (g_use_local_scale && global) { model->Get3D()->local.scale *= regional_scale; }
 
             // Select symbol and border
             if (g_use_symbols && symbol)
@@ -97,7 +62,7 @@ namespace mapmarker
                 int x, y;
                 helper::Arrayize(selected_border, 2, 2, x, y);
                 helper::SetUvUnique(border, (float)x / 2, (float)y / 2);
-                border->local.scale = g_border_scale;
+                border->parent->local.scale = g_border_scale;
 
                 if (g_rotate_border)
                 {
@@ -133,7 +98,7 @@ namespace mapmarker
         else { _DEBUGLOG("No map equipped"); }
     }
 
-    HeldMap* GetActiveMap()
+    const HeldMap* GetActiveMap()
     {
         RE::FormID mapform = NULL;
         if (auto right_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kRightMapSlot))
@@ -207,7 +172,7 @@ namespace mapmarker
         return nullptr;
     }
 
-    void AddMarker(QuestTarget& a_target, HeldMap* a_map)
+    void AddMarker(QuestTarget& a_target, const HeldMap* a_map)
     {
         auto objref = a_target.objref;
         bool valid_marker = false;
@@ -224,6 +189,8 @@ namespace mapmarker
                     ref_toplevel_location->GetName());
 
                 // TODO: need to check worldspace for mod refs that have no location assigned
+
+
                 if (a_map->location_form == (ref_toplevel_location->formID & 0x00FFFFFF) ||
                     (a_map->location_form == HoldLocations::Tamriel &&
                         (ref_toplevel_location->formID & 0x00FFFFFF) != HoldLocations::Solstheim))
@@ -253,7 +220,7 @@ namespace mapmarker
                 auto icon_transform = MapToHand(icon_coords, a_map->isLeft);
 
                 g_icon_addons.emplace_back(
-                    std::make_unique<MapIcon>(a_target.type, a_map->isLeft, icon_transform));
+                    std::make_unique<MapIcon>(a_target.type, a_map->isLeft, icon_transform, IsSkyrim(a_map)));
 
                 _DEBUGLOG(" Marker added with local position: {} {} {}",
                     VECTOR(icon_transform.translate));
@@ -320,7 +287,7 @@ namespace mapmarker
             a_point.y < top_right.y);
     }
 
-    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map)
+    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, const HeldMap* a_map)
     {
         RE::NiPoint2 result;
 
@@ -371,5 +338,13 @@ namespace mapmarker
     {
         _DEBUGLOG("Clearing markers");
         g_icon_addons.clear();
+    }
+
+    bool IsSkyrim(const HeldMap* a_map){
+        return a_map->location_form == HoldLocations::Tamriel;
+    }
+
+    bool IsSolstheim(const HeldMap* a_map){
+        return a_map->location_form == HoldLocations::Solstheim;
     }
 }
