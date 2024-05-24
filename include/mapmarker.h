@@ -14,7 +14,7 @@ namespace mapmarker
     extern int   selected_border;
     extern float g_border_scale;
     extern float g_symbol_scale;
-    extern bool  g_use_local_scale;
+    extern float g_regional_scale;
     extern bool  g_show_playermarker;
     extern bool  g_rotate_border;
 

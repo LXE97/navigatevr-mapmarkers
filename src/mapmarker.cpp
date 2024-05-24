@@ -7,20 +7,15 @@
 
 namespace mapmarker
 {
-    const auto       kRightMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModMouth;
-    const auto       kLeftMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModNeck;
-    const RE::FormID kMarkerID = 0x34;
-    const float      kMapWidth = 41.4f;
-    const float      kMapHeight = 28.8f;
-    RE::TESFaction*  g_dawnguard_faction = nullptr;
-    RE::TESFaction*  g_stormcloak_faction = nullptr;
+    RE::TESFaction* g_dawnguard_faction = nullptr;
+    RE::TESFaction* g_stormcloak_faction = nullptr;
 
     // User Settings
     bool  g_use_symbols = true;
     int   selected_border = 0;
     float g_border_scale = 1.f;
     float g_symbol_scale = 1.f;
-    bool  g_use_local_scale = true;
+    float g_regional_scale = 1.0f;
     bool  g_show_playermarker = false;
     bool  g_rotate_border = true;
 
@@ -28,7 +23,8 @@ namespace mapmarker
     std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
     int                                              g_mod_index = 0;
 
-    MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform, bool a_global)
+    MapIcon::MapIcon(
+        RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform, bool a_global)
     {
         auto pc = RE::PlayerCharacter::GetSingleton();
         type = GetIconType(a_type);
@@ -46,7 +42,7 @@ namespace mapmarker
             auto symbol = model->Get3D()->GetObjectByName("Symbol");
             auto border = model->Get3D()->GetObjectByName("Border");
 
-            if (g_use_local_scale && global) { model->Get3D()->local.scale *= regional_scale; }
+            if (!global) { model->Get3D()->local.scale *= g_regional_scale; }
 
             // Select symbol and border
             if (g_use_symbols && symbol)
@@ -85,7 +81,7 @@ namespace mapmarker
             if (refs.empty()) { _DEBUGLOG("No tracked quests found"); }
             else
             {
-                // for border rotation to be consistent(>.>) between refreshes:
+                // for border rotation to be consistent between refreshes (>.>)
                 std::srand(1);
 
                 for (auto& target : refs)
@@ -174,57 +170,23 @@ namespace mapmarker
 
     void AddMarker(QuestTarget& a_target, const HeldMap* a_map)
     {
-        auto objref = a_target.objref;
-        bool valid_marker = false;
+        auto position = GetMarkerPosition(a_target.objref);
 
-        // Check if marker location is inside currently equipped map
-        if (auto current_loc = objref->GetCurrentLocation(); current_loc)
+        auto icon_coords = WorldToMap(position, a_map);
+        _DEBUGLOG("    local map coords: {} {}", icon_coords.x, icon_coords.y);
+
+        // TODO: replace with checking distance from border, for marker masking
+
+        // Don't add markers that would be off the map
+            if (TestPointBox2D({ icon_coords.x, icon_coords.y }, { 0, 0 }, { kMapWidth, kMapHeight }))
         {
+            auto icon_transform = MapToHand(icon_coords, a_map->isLeft);
+
+            g_icon_addons.emplace_back(std::make_unique<MapIcon>(
+                a_target.type, a_map->isLeft, icon_transform, IsSkyrim(a_map)));
+
             _DEBUGLOG(
-                "  Quest objective {} location: {}", objref->GetName(), current_loc->GetName());
-
-            if (auto ref_toplevel_location = GetRootLocation(current_loc))
-            {
-                _DEBUGLOG("    Quest location {} root location: {}", current_loc->GetName(),
-                    ref_toplevel_location->GetName());
-
-                // TODO: need to check worldspace for mod refs that have no location assigned
-
-
-                if (a_map->location_form == (ref_toplevel_location->formID & 0x00FFFFFF) ||
-                    (a_map->location_form == HoldLocations::Tamriel &&
-                        (ref_toplevel_location->formID & 0x00FFFFFF) != HoldLocations::Solstheim))
-                {
-                    valid_marker = true;
-                }
-                else { _DEBUGLOG(" Stop: Quest objective not on active map"); }
-            }
-        }
-        else if (auto base = objref->GetBaseObject(); base && base->GetFormID() == kMarkerID)
-        {  // allow player marker to bypass location checks
-            valid_marker = g_show_playermarker;
-        }
-
-        if (valid_marker)
-        {
-            auto position = GetMarkerPosition(objref);
-
-            auto icon_coords = WorldToMap(position, a_map);
-            _DEBUGLOG("    local map coords: {} {}", icon_coords.x, icon_coords.y);
-
-            // TODO: replace with checking distance from border, for marker masking
-            // Check if local map coordinates are within the map model bounds
-            if (TestPointBox2D(
-                    { icon_coords.x, icon_coords.y }, { 0, 0 }, { kMapWidth, kMapHeight }))
-            {
-                auto icon_transform = MapToHand(icon_coords, a_map->isLeft);
-
-                g_icon_addons.emplace_back(
-                    std::make_unique<MapIcon>(a_target.type, a_map->isLeft, icon_transform, IsSkyrim(a_map)));
-
-                _DEBUGLOG(" Marker added with local position: {} {} {}",
-                    VECTOR(icon_transform.translate));
-            }
+                " Marker added with local position: {} {} {}", VECTOR(icon_transform.translate));
         }
     }
 
@@ -322,12 +284,12 @@ namespace mapmarker
         // Put the map coordinates into local hand space
         if (isLeft)
         {
-            result.translate = lpos + lrot * RE::NiPoint3(a_coords.x, a_coords.y, 0.f);
+            result.translate = lpos + lrot * RE::NiPoint3(a_coords.x, a_coords.y, 0.05f);
             result.rotate = lrot;
         }
         else
-        {  //TODO: more accurate offset
-            result.translate = rpos + rrot * RE::NiPoint3(a_coords.x - 41, a_coords.y, 0.f);
+        {
+            result.translate = rpos + rrot * RE::NiPoint3(a_coords.x - 39.5, a_coords.y, 0.05f);
             result.rotate = rrot;
         }
 
@@ -340,11 +302,10 @@ namespace mapmarker
         g_icon_addons.clear();
     }
 
-    bool IsSkyrim(const HeldMap* a_map){
-        return a_map->location_form == HoldLocations::Tamriel;
-    }
+    bool IsSkyrim(const HeldMap* a_map) { return a_map->location_form == HoldLocations::Tamriel; }
 
-    bool IsSolstheim(const HeldMap* a_map){
+    bool IsSolstheim(const HeldMap* a_map)
+    {
         return a_map->location_form == HoldLocations::Solstheim;
     }
 }
