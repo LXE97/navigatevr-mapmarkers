@@ -3,8 +3,6 @@
 #include "main_plugin.h"
 #include "mapmarker_resources.h"
 
-#include <cstdlib>
-
 namespace mapmarker
 {
     RE::TESFaction* g_dawnguard_faction = nullptr;
@@ -13,22 +11,23 @@ namespace mapmarker
     // User Settings
     bool  g_use_symbols = true;
     int   selected_border = 0;
-    float g_border_scale = 1.f;
-    float g_symbol_scale = 1.f;
-    float g_regional_scale = 1.0f;
-    bool  g_show_playermarker = false;
-    bool  g_rotate_border = true;
+    float g_border_scale = 1.5;
+    float g_symbol_scale = 1.0;
+    float g_regional_scale = 1.5;
+    bool  g_show_playermarker = true;
+    bool  g_show_player = false;
 
     // State
     std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
     int                                              g_mod_index = 0;
 
-    MapIcon::MapIcon(
-        RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform, bool a_global)
+    MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
+        bool a_global, RE::NiPoint2 a_overlap_percent)
     {
         auto pc = RE::PlayerCharacter::GetSingleton();
         type = GetIconType(a_type);
         global = a_global;
+        edge_overlap = a_overlap_percent;
         model = art_addon::ArtAddon::Make(icon_path, pc,
             pc->Get3D(false)->GetObjectByName(isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
             a_transform, std::bind(&MapIcon::OnCreation, this));
@@ -56,19 +55,24 @@ namespace mapmarker
             if (border)
             {
                 int x, y;
-                helper::Arrayize(selected_border, 2, 2, x, y);
-                helper::SetUvUnique(border, (float)x / 2, (float)y / 2);
+                helper::Arrayize(selected_border, n_border, n_border, x, y);
+
+                // offset icon due to map edge
+                constexpr float maximum_border_offset = 0.2;
+
+                // translation is opposite sign of uv offset
+                border->local.translate.x -= edge_overlap.x;
+                border->local.translate.y -= edge_overlap.y;
+
+                // select icon from atlas
+                edge_overlap *= maximum_border_offset;
+                edge_overlap.x += (float)x * 0.6;
+                edge_overlap.y += (float)y * 0.6;
+
+                helper::SetUvUnique(border, edge_overlap.x, edge_overlap.y);
+
                 border->parent->local.scale = g_border_scale;
-
-                if (g_rotate_border)
-                {
-                    auto angle = static_cast<float>(std::rand() % 360);
-                    border->parent->local.rotate.SetEulerAnglesXYZ(
-                        { 0, 0, helper::deg2rad(angle) });
-                }
             }
-
-            // TODO: offset if it's hanging off the map edge
         }
         else { SKSE::log::error("Map marker creation failed"); }
     }
@@ -81,9 +85,6 @@ namespace mapmarker
             if (refs.empty()) { _DEBUGLOG("No tracked quests found"); }
             else
             {
-                // for border rotation to be consistent between refreshes (>.>)
-                std::srand(1);
-
                 for (auto& target : refs)
                 {
                     _DEBUGLOG("Adding marker for {}", target.objref->GetName());
@@ -146,6 +147,12 @@ namespace mapmarker
                 }
         }
 
+        if (g_show_player)
+        {
+            result.push_back({ RE::PlayerCharacter::GetSingleton()->AsReference(),
+                RE::QUEST_DATA::Type::kNone });
+        }
+
         return result;
     }
 
@@ -175,15 +182,36 @@ namespace mapmarker
         auto icon_coords = WorldToMap(position, a_map);
         _DEBUGLOG("    local map coords: {} {}", icon_coords.x, icon_coords.y);
 
-        // TODO: replace with checking distance from border, for marker masking
-
         // Don't add markers that would be off the map
-            if (TestPointBox2D({ icon_coords.x, icon_coords.y }, { 0, 0 }, { kMapWidth, kMapHeight }))
+        if (TestPointBox2D({ icon_coords.x, icon_coords.y }, { 0, 0 }, { kMapWidth, kMapHeight }))
         {
             auto icon_transform = MapToHand(icon_coords, a_map->isLeft);
 
-            g_icon_addons.emplace_back(std::make_unique<MapIcon>(
-                a_target.type, a_map->isLeft, icon_transform, IsSkyrim(a_map)));
+            // check if border needs to be clipped
+            float radius = g_border_scale;
+            float x_overlap = 0.f;
+            float y_overlap = 0.f;
+            if (!IsSkyrim(a_map)) { radius *= g_regional_scale; }
+
+            if (auto right_overlap = icon_coords.x + radius - kMapWidth; right_overlap > 0)
+            {
+                x_overlap = -right_overlap / radius;
+            }
+            else if (auto left_overlap = icon_coords.x - radius; left_overlap < 0)
+            {
+                x_overlap = -left_overlap / radius;
+            }
+            if (auto top_overlap = icon_coords.y + radius - kMapHeight; top_overlap > 0)
+            {
+                y_overlap = top_overlap / radius;
+            }
+            else if (auto bottom_overlap = icon_coords.y - radius; bottom_overlap < 0)
+            {
+                y_overlap = bottom_overlap / radius;
+            }
+
+            g_icon_addons.emplace_back(std::make_unique<MapIcon>(a_target.type, a_map->isLeft,
+                icon_transform, IsSkyrim(a_map), RE::NiPoint2(x_overlap, y_overlap)));
 
             _DEBUGLOG(
                 " Marker added with local position: {} {} {}", VECTOR(icon_transform.translate));

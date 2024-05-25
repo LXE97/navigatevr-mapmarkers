@@ -72,7 +72,8 @@ namespace vrmapmarkers
 
     void OnMenuOpenClose(RE::MenuOpenCloseEvent const* evn)
     {
-        if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0)
+        if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0 ||
+            (std::strcmp(evn->menuName.data(), "MapMenu") == 0 && mapmarker::g_show_playermarker))
         {
             ReadConfig(g_ini_path);
 
@@ -130,8 +131,7 @@ namespace vrmapmarkers
                         std::clamp(helper::ReadFloatFromIni(config, "fRegionalScale"), 0.2f, 10.f);
                     mapmarker::g_show_playermarker =
                         helper::ReadIntFromIni(config, "bShowCustomMarker");
-                    mapmarker::g_rotate_border =
-                        helper::ReadIntFromIni(config, "bRandomAdjustment");
+                    mapmarker::g_show_player = helper::ReadIntFromIni(config, "bShowPlayer");
 
                     g_debug_print = helper::ReadIntFromIni(config, "bDebug");
 

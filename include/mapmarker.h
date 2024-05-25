@@ -16,7 +16,7 @@ namespace mapmarker
     extern float g_symbol_scale;
     extern float g_regional_scale;
     extern bool  g_show_playermarker;
-    extern bool  g_rotate_border;
+    extern bool  g_show_player;
 
     enum HoldLocations
     {
@@ -58,11 +58,12 @@ namespace mapmarker
     class MapIcon
     {
     public:
-        MapIcon(
-            RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform, bool a_global);
+        MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
+            bool a_global, RE::NiPoint2 a_overlap_percent);
 
     private:
         static constexpr const char* icon_path = "NavigateVRAddon/mapmarker.nif";
+        static constexpr int         n_border = 2;
 
         static int GetIconType(RE::QUEST_DATA::Type a_type)
         {
@@ -84,6 +85,7 @@ namespace mapmarker
         art_addon::ArtAddonPtr model = nullptr;
         int                    type;
         bool                   global = false;
+        RE::NiPoint2           edge_overlap;
     };
 
     void UpdateMapMarkers();
@@ -111,7 +113,7 @@ namespace mapmarker
     RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft);
 
     bool IsSkyrim(const HeldMap* a_map);
-    
+
     bool IsSolstheim(const HeldMap* a_map);
 
 }
