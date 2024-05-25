@@ -1,4 +1,4 @@
-## SKSE plugin source for Skyrim mod "Map Markers for NavigateVR"
+## SKSE plugin source for Skyrim mod ["Map Markers for NavigateVR"](https://www.nexusmods.com/skyrimspecialedition/mods/119923)
 
 ### User requirements:
 * SKSE
