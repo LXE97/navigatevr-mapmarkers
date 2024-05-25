@@ -14,10 +14,8 @@
 
 using namespace std::literals;
 
-namespace restl
+namespace RE
 {
-	using namespace SKSE::stl;
-
 	template <class T>
 	void write_thunk_call(std::uintptr_t a_src)
 	{

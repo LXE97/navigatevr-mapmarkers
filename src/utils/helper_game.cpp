@@ -18,7 +18,7 @@ namespace helper
     void InstallPlayerUpdateHook(std::function<void(void)> a_func)
     {
         PlayerCharacter_Update::my_func = a_func;
-        restl::write_vfunc<RE::PlayerCharacter, 0xAF, PlayerCharacter_Update>();
+        RE::write_vfunc<RE::PlayerCharacter, 0xAF, PlayerCharacter_Update>();
     }
 
     TESForm* LookupByName(FormType a_typeEnum, const char* a_name)
@@ -208,7 +208,12 @@ namespace helper
                             a_modelEffect.artObject->GetFormID());
                         player++;
                     }
-                    else { dangling++; }
+                    else
+                    {
+                        SKSE::log::debug("MRE:{}  AO:{}", (void*)&a_modelEffect,
+                            (void*)(a_modelEffect.artObject));
+                        dangling++;
+                    }
                 }
                 return RE::BSContainer::ForEachResult::kContinue;
             });
