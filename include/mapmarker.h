@@ -14,6 +14,9 @@ namespace mapmarker
     extern int   selected_border;
     extern float g_border_scale;
     extern float g_symbol_scale;
+    extern float g_regional_scale;
+    extern bool  g_show_playermarker;
+    extern bool  g_show_player;
 
     enum HoldLocations
     {
@@ -32,10 +35,6 @@ namespace mapmarker
 
     struct MapCalibration
     {
-        // world bounds, for checking if point should be drawn
-        RE::NiPoint2 world_bottom_left;
-        RE::NiPoint2 world_top_right;
-
         // Affine transform obtained via the method described here:
         // https://stackoverflow.com/a/2756165
         RE::NiPoint3 upper;
@@ -59,10 +58,12 @@ namespace mapmarker
     class MapIcon
     {
     public:
-        MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform);
+        MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
+            bool a_global, RE::NiPoint2 a_overlap_percent);
 
     private:
-        static constexpr const char* icon_path = "mapmarker_x.nif";
+        static constexpr const char* icon_path = "NavigateVRAddon/mapmarker.nif";
+        static constexpr int         n_border = 2;
 
         static int GetIconType(RE::QUEST_DATA::Type a_type)
         {
@@ -83,17 +84,19 @@ namespace mapmarker
 
         art_addon::ArtAddonPtr model = nullptr;
         int                    type;
+        bool                   global = false;
+        RE::NiPoint2           edge_overlap;
     };
 
     void UpdateMapMarkers();
 
-    HeldMap* GetActiveMap();
+    const HeldMap* GetActiveMap();
 
     std::vector<QuestTarget> GetTrackedRefs();
 
     RE::TESObjectREFR* GetQuestTarget(RE::BGSQuestObjective* a_obj);
 
-    void AddMarker(QuestTarget& a_target, HeldMap* a_map);
+    void AddMarker(QuestTarget& a_target, const HeldMap* a_map);
 
     void ClearMarkers();
 
@@ -105,6 +108,12 @@ namespace mapmarker
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right);
 
-    RE::NiTransform WorldToMap(RE::NiPoint2 a_world_pos, HeldMap* a_map);
+    RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, const HeldMap* a_map);
+
+    RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft);
+
+    bool IsSkyrim(const HeldMap* a_map);
+
+    bool IsSolstheim(const HeldMap* a_map);
 
 }
