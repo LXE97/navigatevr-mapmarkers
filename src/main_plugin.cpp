@@ -29,12 +29,17 @@ namespace vrmapmarkers
         if (auto file = RE::TESDataHandler::GetSingleton()->LookupModByName(g_plugin_name))
         {
             g_mod_index = file->GetPartialIndex();
+            SKSE::log::trace("NavigateVR ESP index: {:x}", g_mod_index);
+            if (g_mod_index == 0xff)
+            {
+                SKSE::log::error("NavigateVR ESP not activated, aborting");
+                return;
+            }
         }
         else
         {
             SKSE::log::error(
-                "NavigateVR ESP not found, please ensure you enabled the mod and did not rename "
-                "the plugin file");
+                "NavigateVR ESP not found, please ensure you did not rename the plugin file");
             return;
         }
 
@@ -73,7 +78,7 @@ namespace vrmapmarkers
     void OnMenuOpenClose(RE::MenuOpenCloseEvent const* evn)
     {
         if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0 ||
-            (std::strcmp(evn->menuName.data(), "MapMenu") == 0 && mapmarker::g_show_playermarker))
+            (mapmarker::g_show_playermarker && std::strcmp(evn->menuName.data(), "MapMenu") == 0))
         {
             ReadConfig(g_ini_path);
 
