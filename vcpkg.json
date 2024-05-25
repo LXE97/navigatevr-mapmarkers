@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "vrmapmarkers",
-  "version-string": "1.0.3b",
+  "version-string": "1.0.2b",
   "dependencies": [
     "commonlibsse-ng-vr"
   ]

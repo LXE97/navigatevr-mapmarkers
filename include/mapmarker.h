@@ -62,7 +62,7 @@ namespace mapmarker
             bool a_global, RE::NiPoint2 a_overlap_percent);
 
     private:
-        static constexpr const char* icon_path = "NavigateVRAddon/mapmarker.nif";
+        static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
         static constexpr int         n_border = 2;
 
         static int GetIconType(RE::QUEST_DATA::Type a_type)
