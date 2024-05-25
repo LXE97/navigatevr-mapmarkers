@@ -26,19 +26,23 @@ namespace vrmapmarkers
 
     void Init()
     {
+        // Populate resource references
         if (auto file = RE::TESDataHandler::GetSingleton()->LookupModByName(g_plugin_name))
         {
             g_mod_index = file->GetPartialIndex();
+            SKSE::log::trace("NavigateVR ESP index: {:x}", g_mod_index);
+            if (g_mod_index == 0xff || !g_mod_index)
+            {
+                SKSE::log::error("NavigateVR ESP not activated, aborting");
+                return;
+            }
         }
         else
         {
             SKSE::log::error(
-                "NavigateVR ESP not found, please ensure you enabled the mod and did not rename "
-                "the plugin file");
+                "NavigateVR ESP not found, please ensure you did not rename the plugin file");
             return;
         }
-
-        helper::InstallPlayerUpdateHook(PlayerUpdate);
 
         // Mapmarker initialization
         mapmarker::g_dawnguard_faction =
@@ -53,6 +57,8 @@ namespace vrmapmarkers
 
         menuchecker::begin();
 
+        helper::InstallPlayerUpdateHook(PlayerUpdate);
+
         auto equip_sink = EventSink<RE::TESEquipEvent>::GetSingleton();
         RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(equip_sink);
         equip_sink->AddCallback(OnEquipEvent);
@@ -65,6 +71,7 @@ namespace vrmapmarkers
     void OnGameLoad()
     {
         _DEBUGLOG("Load Game: reset state");
+        ArtAddonManager::GetSingleton()->OnGameLoad();
 
         mapmarker::ClearMarkers();
         if (RE::PlayerCharacter::GetSingleton()->GetCurrent3D()) { mapmarker::UpdateMapMarkers(); }
@@ -73,7 +80,7 @@ namespace vrmapmarkers
     void OnMenuOpenClose(RE::MenuOpenCloseEvent const* evn)
     {
         if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0 ||
-            (std::strcmp(evn->menuName.data(), "MapMenu") == 0 && mapmarker::g_show_playermarker))
+            (mapmarker::g_show_playermarker && std::strcmp(evn->menuName.data(), "MapMenu") == 0))
         {
             ReadConfig(g_ini_path);
 
