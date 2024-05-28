@@ -5,9 +5,13 @@
 
 namespace mapmarker
 {
+    class MapIcon;
+
     extern RE::TESFaction* g_stormcloak_faction;
     extern RE::TESFaction* g_dawnguard_faction;
     extern int             g_mod_index;
+
+    extern std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
 
     // User Settings
     extern bool  g_use_symbols;
@@ -53,13 +57,18 @@ namespace mapmarker
     {
         RE::TESObjectREFR*   objref;
         RE::QUEST_DATA::Type type;
+        RE::TESQuestTarget*  target;
     };
 
     class MapIcon
     {
     public:
         MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
-            bool a_global, RE::NiPoint2 a_overlap_percent);
+            bool a_global, RE::NiPoint2 a_overlap_percent, RE::TESQuestTarget* a_target);
+
+        void                Update(RE::NiTransform& a_hand_xform);
+        
+        RE::TESQuestTarget* target = nullptr;
 
     private:
         static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
@@ -115,5 +124,7 @@ namespace mapmarker
     bool IsSkyrim(const HeldMap* a_map);
 
     bool IsSolstheim(const HeldMap* a_map);
+
+    void UpdateSingleMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_coords);
 
 }

@@ -1,4 +1,5 @@
 #include "main_plugin.h"
+#include "hooks.h"
 
 #include <chrono>
 
@@ -26,6 +27,7 @@ namespace vrmapmarkers
 
     void Init()
     {
+        hooks::Install();
         // Populate resource references
         if (auto file = RE::TESDataHandler::GetSingleton()->LookupModByName(g_plugin_name))
         {

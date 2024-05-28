@@ -22,7 +22,7 @@ namespace mapmarker
     int                                              g_mod_index = 0;
 
     MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
-        bool a_global, RE::NiPoint2 a_overlap_percent)
+        bool a_global, RE::NiPoint2 a_overlap_percent, RE::TESQuestTarget* a_target)
     {
         auto pc = RE::PlayerCharacter::GetSingleton();
         type = GetIconType(a_type);
@@ -31,6 +31,7 @@ namespace mapmarker
         model = art_addon::ArtAddon::Make(icon_path, pc,
             pc->Get3D(false)->GetObjectByName(isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
             a_transform, std::bind(&MapIcon::OnCreation, this));
+        target = a_target;
     }
 
     void MapIcon::OnCreation()
@@ -75,6 +76,16 @@ namespace mapmarker
             }
         }
         else { SKSE::log::error("Map marker creation failed"); }
+    }
+
+    void MapIcon::Update(RE::NiTransform& a_hand_xform)
+    {
+        if (model && model->Get3D())
+        {
+            RE::NiUpdateData ctx;
+            model->Get3D()->local = a_hand_xform;
+            model->Get3D()->Update(ctx);
+        }
     }
 
     void UpdateMapMarkers()
@@ -130,7 +141,13 @@ namespace mapmarker
             {
                 if (auto ref = GetQuestTarget(objective))
                 {
-                    result.push_back({ ref, objective->ownerQuest->GetType() });
+                    for (auto& entry : ref->extraList)
+                    {
+                        SKSE::log::trace("extradata type: {:x}", (int)entry.GetType());
+                    }
+
+                    result.push_back(
+                        { ref, objective->ownerQuest->GetType(), *(objective->targets) });
                 }
             }
         }
@@ -142,6 +159,8 @@ namespace mapmarker
                 {
                     if (auto ref = ptr.get())
                     {
+                        auto id = ref->GetFormID();
+                        auto type = ref->GetFormType();
                         result.push_back({ ref, RE::QUEST_DATA::Type::kNone });
                     }
                 }
@@ -211,7 +230,7 @@ namespace mapmarker
             }
 
             g_icon_addons.emplace_back(std::make_unique<MapIcon>(a_target.type, a_map->isLeft,
-                icon_transform, IsSkyrim(a_map), RE::NiPoint2(x_overlap, y_overlap)));
+                icon_transform, IsSkyrim(a_map), RE::NiPoint2(x_overlap, y_overlap), a_target.target));
 
             _DEBUGLOG(
                 " Marker added with local position: {} {} {}", VECTOR(icon_transform.translate));
@@ -336,4 +355,6 @@ namespace mapmarker
     {
         return a_map->location_form == HoldLocations::Solstheim;
     }
+
+    void UpdateSingleMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_coords) {}
 }
