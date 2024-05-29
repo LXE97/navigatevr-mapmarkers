@@ -1,4 +1,5 @@
 #include "main_plugin.h"
+
 #include "hooks.h"
 
 #include <chrono>
@@ -72,22 +73,19 @@ namespace vrmapmarkers
 
     void OnGameLoad()
     {
-        _DEBUGLOG("Load Game: reset state");
         ArtAddonManager::GetSingleton()->OnGameLoad();
-
-        mapmarker::ClearMarkers();
-        if (RE::PlayerCharacter::GetSingleton()->GetCurrent3D()) { mapmarker::UpdateMapMarkers(); }
+        mapmarker::Manager::GetSingleton()->Refresh();
     }
 
     void OnMenuOpenClose(RE::MenuOpenCloseEvent const* evn)
     {
-        if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0 ||
-            (mapmarker::g_show_playermarker && std::strcmp(evn->menuName.data(), "MapMenu") == 0))
+        if (!evn->opening && (std::strcmp(evn->menuName.data(), "Journal Menu") == 0 ||
+            std::strcmp(evn->menuName.data(), "MapMenu") == 0))
         {
             ReadConfig(g_ini_path);
 
-            mapmarker::ClearMarkers();
-            mapmarker::UpdateMapMarkers();
+            mapmarker::Manager::GetSingleton()->Refresh();
+
         }
     }
 
@@ -98,11 +96,7 @@ namespace vrmapmarkers
         {
             if (helper::GetFormIndex(event->baseObject) == g_mod_index)
             {
-                _DEBUGLOG("player {} {:x}", event->equipped ? "equipped" : "unequipped",
-                    event->baseObject);
-
-                mapmarker::ClearMarkers();
-                if (event->equipped) { mapmarker::UpdateMapMarkers(); }
+                mapmarker::Manager::GetSingleton()->Refresh();
             }
         }
     }
@@ -130,17 +124,18 @@ namespace vrmapmarkers
                 std::ifstream config(config_path);
                 if (config.is_open())
                 {
-                    mapmarker::g_use_symbols = helper::ReadIntFromIni(config, "bUseSymbols");
-                    mapmarker::selected_border = helper::ReadIntFromIni(config, "iBorder") % 4;
-                    mapmarker::g_border_scale =
+                    auto &settings = mapmarker::Manager::GetSingleton()->SetSettings();
+                    settings.use_symbols = helper::ReadIntFromIni(config, "bUseSymbols");
+                    settings.selected_border = helper::ReadIntFromIni(config, "iBorder") % 4;
+                    settings.border_scale =
                         std::clamp(helper::ReadFloatFromIni(config, "fBorderScale"), 0.2f, 10.f);
-                    mapmarker::g_symbol_scale =
+                    settings.symbol_scale =
                         std::clamp(helper::ReadFloatFromIni(config, "fSymbolScale"), 0.2f, 10.f);
-                    mapmarker::g_regional_scale =
+                    settings.regional_scale =
                         std::clamp(helper::ReadFloatFromIni(config, "fRegionalScale"), 0.2f, 10.f);
-                    mapmarker::g_show_playermarker =
+                    settings.show_custom =
                         helper::ReadIntFromIni(config, "bShowCustomMarker");
-                    mapmarker::g_show_player = helper::ReadIntFromIni(config, "bShowPlayer");
+                    settings.show_player = helper::ReadIntFromIni(config, "bShowPlayer");
 
                     g_debug_print = helper::ReadIntFromIni(config, "bDebug");
 

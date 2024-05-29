@@ -2,35 +2,24 @@
 
 namespace hooks
 {
-    // = 0;
-    float               g_marker_x = 0.f;
-    float               g_marker_y = 0.f;
+    float                g_marker_x = 0.f;
+    float                g_marker_y = 0.f;
     RE::TESQuestTarget** g_target = nullptr;
 
     int c = 0xbeef;
 
     void QuestUpdateHook()
     {
-        if (c++ % 300 == 0)
+        if (g_target &&
+            mapmarker::Manager::GetSingleton()->GetState() == mapmarker::Manager::State::kWaiting)
         {
-            SKSE::log::trace("({}, {})", g_marker_x, g_marker_y);
-            SKSE::log::trace("checking {}", (void*)g_target);
-            if (g_target)
-            {
-                auto real_target = *(g_target);
-
-                if (auto it = std::find_if(mapmarker::g_icon_addons.begin(),
-                        mapmarker::g_icon_addons.end(),
-                        [&real_target](const auto& m) { return m->target == real_target; });
-                    it != mapmarker::g_icon_addons.end())
-                {
-                    SKSE::log::trace("got {}", (void*)it->get()->target);
-                }
-            }
+            auto real_target = *(g_target);
+            mapmarker::Manager::GetSingleton()->ProcessCompassMarker(
+                real_target, { g_marker_x, g_marker_y });
         }
     }
 
-    // Call in the compass update function that updates quest markers
+    // Call inside the compass update function that updates quest markers
     uintptr_t UpdateQuestHookedFuncAddr = 0;
     auto      UpdateQuestHookLoc = RelocAddr<uintptr_t>(0x8b2bd0 + 0x13A);
     auto      UpdateQuestHookedFunc = RelocAddr<uintptr_t>(0x8b3430);
@@ -71,7 +60,7 @@ namespace hooks
 
                     jmp(ptr[rip + retnLabel]);
 
-                    L(hookLabel), dq(reinterpret_cast<std::uintptr_t>(&QuestUpdateHook));
+                    L(hookLabel), dq(reinterpret_cast<uintptr_t>(&QuestUpdateHook));
                     L(retnLabel), dq(UpdateQuestHookLoc + 5);
 
                     ready();

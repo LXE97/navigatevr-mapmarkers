@@ -11,17 +11,6 @@ namespace mapmarker
     extern RE::TESFaction* g_dawnguard_faction;
     extern int             g_mod_index;
 
-    extern std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
-
-    // User Settings
-    extern bool  g_use_symbols;
-    extern int   selected_border;
-    extern float g_border_scale;
-    extern float g_symbol_scale;
-    extern float g_regional_scale;
-    extern bool  g_show_playermarker;
-    extern bool  g_show_player;
-
     enum HoldLocations
     {
         Tamriel = 0x130FF,
@@ -53,22 +42,16 @@ namespace mapmarker
         MapCalibration data;
     };
 
-    struct QuestTarget
-    {
-        RE::TESObjectREFR*   objref;
-        RE::QUEST_DATA::Type type;
-        RE::TESQuestTarget*  target;
-    };
-
     class MapIcon
     {
     public:
         MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
-            bool a_global, RE::NiPoint2 a_overlap_percent, RE::TESQuestTarget* a_target);
+            bool a_global, RE::NiPoint2 a_overlap_percent);
 
-        void                Update(RE::NiTransform& a_hand_xform);
-        
+        void Update(RE::NiTransform& a_hand_xform);
+
         RE::TESQuestTarget* target = nullptr;
+        HeldMap*            owner = nullptr;
 
     private:
         static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
@@ -97,23 +80,65 @@ namespace mapmarker
         RE::NiPoint2           edge_overlap;
     };
 
-    void UpdateMapMarkers();
+    class Manager
+    {
+    public:
+        struct Settings
+        {
+            bool  use_symbols = true;
+            int   selected_border = 0;
+            float border_scale = 1.5;
+            float symbol_scale = 1.0;
+            float regional_scale = 1.5;
+            bool  show_custom = true;
+            bool  show_player = false;
+        };
 
-    const HeldMap* GetActiveMap();
+        enum class State
+        {
+            kInactive,
+            kWaiting,
+            kInitialized
+        };
 
-    std::vector<QuestTarget> GetTrackedRefs();
+        static Manager* GetSingleton()
+        {
+            static Manager singleton;
+            return &singleton;
+        }
 
-    RE::TESObjectREFR* GetQuestTarget(RE::BGSQuestObjective* a_obj);
+        const Settings& GetSettings() const { return settings; }
+        Settings&       SetSettings() { return settings; }
 
-    void AddMarker(QuestTarget& a_target, const HeldMap* a_map);
+        State GetState() const { return state; }
 
-    void ClearMarkers();
+        bool FindActiveMap();
 
-    RE::BGSLocation* GetRootLocation(RE::BGSLocation* a_location);
+        void FindActiveObjectives();
 
-    RE::NiPoint2 GetMarkerPosition(RE::TESObjectREFR* a_objref);
+        void ProcessCompassMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_pos);
 
-    RE::TESObjectREFR* GetMapMarker(RE::BGSLocation* a_loc);
+        void AddMarker(RE::NiPoint2 a_world_pos, RE::QUEST_DATA::Type a_type);
+
+        void Refresh();
+
+    private:
+        Manager() = default;
+        ~Manager() = default;
+        Manager(const Manager&) = delete;
+        Manager(Manager&&) = delete;
+        Manager& operator=(const Manager&) = delete;
+        Manager& operator=(Manager&&) = delete;
+
+        Settings                              settings;
+        State                                 state = State::kInactive;
+        std::vector<std::unique_ptr<MapIcon>> icon_addons;
+        std::vector<RE::BGSQuestObjective*>   active_objectives;
+        std::vector<uintptr_t>      seen_targets;
+        const HeldMap*                        active_map = nullptr;
+        std::unique_ptr<MapIcon>              custom_marker;
+        std::unique_ptr<MapIcon>              player_marker;
+    };
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right);
 
@@ -124,7 +149,5 @@ namespace mapmarker
     bool IsSkyrim(const HeldMap* a_map);
 
     bool IsSolstheim(const HeldMap* a_map);
-
-    void UpdateSingleMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_coords);
 
 }
