@@ -2,6 +2,7 @@
 #include "art_addon.h"
 #include "helper_game.h"
 #include "helper_math.h"
+#include "settings.h"
 
 namespace mapmarker
 {
@@ -9,7 +10,7 @@ namespace mapmarker
 
     extern RE::TESFaction* g_stormcloak_faction;
     extern RE::TESFaction* g_dawnguard_faction;
-    extern int             g_mod_index;
+    extern const RE::TESFile*    g_base_plugin;
 
     enum HoldLocations
     {
@@ -83,17 +84,6 @@ namespace mapmarker
     class Manager
     {
     public:
-        struct Settings
-        {
-            bool  use_symbols = true;
-            int   selected_border = 0;
-            float border_scale = 1.5;
-            float symbol_scale = 1.0;
-            float regional_scale = 1.5;
-            bool  show_custom = true;
-            bool  show_player = false;
-        };
-
         enum class State
         {
             kInactive,
@@ -107,9 +97,6 @@ namespace mapmarker
             return &singleton;
         }
 
-        const Settings& GetSettings() const { return settings; }
-        Settings&       SetSettings() { return settings; }
-
         State GetState() const { return state; }
 
         bool FindActiveMap();
@@ -122,6 +109,8 @@ namespace mapmarker
 
         void Refresh();
 
+        bool IsMap(RE::FormID) const;
+
     private:
         Manager() = default;
         ~Manager() = default;
@@ -130,11 +119,10 @@ namespace mapmarker
         Manager& operator=(const Manager&) = delete;
         Manager& operator=(Manager&&) = delete;
 
-        Settings                              settings;
         State                                 state = State::kInactive;
         std::vector<std::unique_ptr<MapIcon>> icon_addons;
         std::vector<RE::BGSQuestObjective*>   active_objectives;
-        std::vector<uintptr_t>      seen_targets;
+        std::vector<uintptr_t>                seen_targets;
         const HeldMap*                        active_map = nullptr;
         std::unique_ptr<MapIcon>              custom_marker;
         std::unique_ptr<MapIcon>              player_marker;

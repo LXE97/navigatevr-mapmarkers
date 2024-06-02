@@ -8,7 +8,7 @@ namespace mapmarker
     RE::TESFaction* g_dawnguard_faction = nullptr;
     RE::TESFaction* g_stormcloak_faction = nullptr;
 
-    int g_mod_index = 0;
+    const RE::TESFile* g_base_plugin = nullptr;
 
     MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
         bool a_global, RE::NiPoint2 a_overlap_percent)
@@ -27,29 +27,29 @@ namespace mapmarker
         _DEBUGLOG("marker creation {}", (void*)this);
         if (model && model->Get3D())
         {
-            auto& settings = Manager::GetSingleton()->GetSettings();
-            auto  symbol = model->Get3D()->GetObjectByName("Symbol");
-            auto  border = model->Get3D()->GetObjectByName("Border");
+            auto symbol = model->Get3D()->GetObjectByName("Symbol");
+            auto border = model->Get3D()->GetObjectByName("Border");
 
             if (!global)
             {
                 model->Get3D()->local.scale *=
-                    Manager::GetSingleton()->GetSettings().regional_scale;
+                    settings::Manager::GetSingleton()->Get("fRegionalScale");
             }
 
             // Select symbol and border
-            if (settings.use_symbols && symbol)
+            if (settings::Manager::GetSingleton()->Get("bUseSymbols") && symbol)
             {
                 int x, y;
                 helper::Arrayize(type, 4, 4, x, y);
                 helper::SetUvUnique(symbol, (float)x / 4, (float)y / 4);
-                symbol->local.scale = settings.symbol_scale;
+                symbol->local.scale = settings::Manager::GetSingleton()->Get("fSymbolScale");
             }
 
             if (border)
             {
                 int x, y;
-                helper::Arrayize(settings.selected_border, n_border, n_border, x, y);
+                helper::Arrayize(settings::Manager::GetSingleton()->Get("iBorderStyle"), n_border,
+                    n_border, x, y);
 
                 // offset icon due to map edge
                 constexpr float maximum_border_offset = 0.2;
@@ -65,7 +65,8 @@ namespace mapmarker
 
                 helper::SetUvUnique(border, edge_overlap.x, edge_overlap.y);
 
-                border->parent->local.scale = settings.border_scale;
+                border->parent->local.scale =
+                    settings::Manager::GetSingleton()->Get("fBorderScale");
             }
         }
         else { SKSE::log::error("Map marker creation failed"); }
@@ -86,10 +87,13 @@ namespace mapmarker
                 auto icon_transform = MapToHand(icon_coords, active_map->isLeft);
 
                 // check if border needs to be clipped
-                float radius = settings.border_scale;
+                float radius = settings::Manager::GetSingleton()->Get("fBorderScale");
                 float x_overlap = 0.f;
                 float y_overlap = 0.f;
-                if (!IsSkyrim(active_map)) { radius *= settings.regional_scale; }
+                if (!IsSkyrim(active_map))
+                {
+                    radius *= settings::Manager::GetSingleton()->Get("fRegionalScale");
+                }
 
                 if (auto right_overlap = icon_coords.x + radius - kMapWidth; right_overlap > 0)
                 {
@@ -111,8 +115,6 @@ namespace mapmarker
                 icon_addons.emplace_back(std::make_unique<MapIcon>(a_type, active_map->isLeft,
                     icon_transform, IsSkyrim(active_map), RE::NiPoint2(x_overlap, y_overlap)));
 
-                    
-
                 _DEBUGLOG(" Marker added with local position: {} {} {}",
                     VECTOR(icon_transform.translate));
             }
@@ -130,10 +132,10 @@ namespace mapmarker
         {
             mapform = left_worn->formID;
         }
-        if (helper::GetFormIndex(mapform) == g_mod_index)
+        if (g_base_plugin->IsFormInMod(mapform))
         {
             if (auto it = std::find_if(g_map_lookup.begin(), g_map_lookup.end(),
-                    [mapform](auto& m) { return m.armor_form == (mapform & 0x00FFFFFF); });
+                    [mapform](auto& m) { return (m.armor_form & 0xFFF) == (mapform & 0xFFF); });
                 it != g_map_lookup.end())
             {
                 active_map = &(*it);
@@ -158,17 +160,22 @@ namespace mapmarker
             FindActiveObjectives();
             state = State::kWaiting;
 
-            if (settings.show_player)
+            if (settings::Manager::GetSingleton()->Get("iShowPlayer"))
             {
                 auto pos = RE::PlayerCharacter::GetSingleton()->GetPosition();
                 AddMarker({ pos.x, pos.y }, RE::QUEST_DATA::Type::kNone);
             }
 
-            if (settings.show_custom)
+            if (settings::Manager::GetSingleton()->Get("iShowCustom"))
             {
-                auto pos =
-                    RE::PlayerCharacter::GetSingleton()->playerMapMarker.get()->GetPosition();
-                AddMarker({ pos.x, pos.y }, RE::QUEST_DATA::Type::kNone);
+                if (auto handle = RE::PlayerCharacter::GetSingleton()->playerMapMarker)
+                {
+                    if (auto ref = handle.get())
+                    {
+                        auto pos = ref.get()->GetPosition();
+                        AddMarker({ pos.x, pos.y }, RE::QUEST_DATA::Type::kNone);
+                    }
+                }
             }
         }
     }
@@ -216,6 +223,22 @@ namespace mapmarker
                 active_objectives.push_back(objective);
             }
         }
+    }
+
+    bool Manager::IsMap(RE::FormID a_form) const
+    {
+        // check if form's mod index matches
+        if (g_base_plugin->IsFormInMod(a_form))
+        {
+            // check if lower form is in list of maps.
+            if (auto it = std::find_if(g_map_lookup.begin(), g_map_lookup.end(),
+                    [a_form](auto& m) { return (m.armor_form & 0xFFF) == (a_form & 0xFFF); });
+                it != g_map_lookup.end())
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right)

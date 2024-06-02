@@ -3,6 +3,7 @@
   "name": "vrmapmarkers",
   "version-string": "1.0.3",
   "dependencies": [
-    "commonlibsse-ng-vr"
+    "commonlibsse-ng-vr",
+    "rapidjson"
   ]
 }

@@ -88,6 +88,7 @@ namespace helper
     std::string           ReadStringFromIni(std::ifstream& a_file, std::string a_setting);
     bool                  ReadConfig(const char* a_ini_path);
 
+    /* a_mod_name: name of the .esp, including the file extension */
     template <typename T>
     T* GetForm(const RE::FormID a_lower_id, std::string a_mod_name)
     {

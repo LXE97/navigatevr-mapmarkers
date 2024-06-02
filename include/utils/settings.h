@@ -17,6 +17,8 @@ namespace settings
 
 		float Get(std::string a_setting_editorid);
 
+		void PrintSettings() const;
+
 	private:
 		Manager() = default;
 		~Manager() = default;

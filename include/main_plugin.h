@@ -17,10 +17,9 @@ namespace vrmapmarkers
 {
     extern bool g_debug_print;
 
-    constexpr const char* g_ini_path = "SKSE/Plugins/vrmapmarkers.ini";
+	constexpr const char* g_mod_name = "vrmapmarkers";
+	constexpr RE::FormID  g_settings_formlist = 0x801;
     constexpr const char* g_plugin_name = "Navigate VR - Equipable Dynamic Compass and Maps.esp";
-
-    extern bool g_left_hand_mode;
 
     void Init();
 
@@ -29,7 +28,4 @@ namespace vrmapmarkers
     void OnMenuOpenClose(RE::MenuOpenCloseEvent const* evn);
 
     void OnEquipEvent(const RE::TESEquipEvent* event);
-
-    /* returns: true if config file changed */
-    bool ReadConfig(const char* a_ini_path);
 }
