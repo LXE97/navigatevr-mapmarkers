@@ -6,10 +6,11 @@ namespace mapmarker
     const auto       kRightMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModMouth;
     const auto       kLeftMapSlot = RE::BGSBipedObjectForm::BipedObjectSlot::kModNeck;
     const RE::FormID kMarkerID = 0x34;
+    const RE::FormID kSpellID = 0x21143; // Clairvoyance
     const float      kMapWidth = 41.4f;
     const float      kMapHeight = 28.8f;
     const float      kRegionalScale = 2.25f;
-
+    
     const MapCalibration tamriel_offsets_L = {
         { 1.067079691252442e-04, -1.031507859361144e-07, 20.223986263997000 },
         { -3.421453365489117e-06, 1.043277726965344e-04, 14.342974703074040 },

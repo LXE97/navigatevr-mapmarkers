@@ -23,7 +23,7 @@ namespace settings
         }
     }
 
-    float Manager::Get(std::string a_setting_editorid)
+    const float Manager::Get(const std::string a_setting_editorid)
     {
         if (auto var = global_vars[a_setting_editorid]) { return var->value; }
         else if (mod_settings)

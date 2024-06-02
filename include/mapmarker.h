@@ -8,9 +8,9 @@ namespace mapmarker
 {
     class MapIcon;
 
-    extern RE::TESFaction* g_stormcloak_faction;
-    extern RE::TESFaction* g_dawnguard_faction;
-    extern const RE::TESFile*    g_base_plugin;
+    extern RE::TESFaction*    g_stormcloak_faction;
+    extern RE::TESFaction*    g_dawnguard_faction;
+    extern const RE::TESFile* g_base_plugin;
 
     enum HoldLocations
     {
@@ -46,32 +46,51 @@ namespace mapmarker
     class MapIcon
     {
     public:
-        MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
-            bool a_global, RE::NiPoint2 a_overlap_percent);
+        enum IconType
+        {
+            kNone = 0,
+            kMainQuest = 1,
+            kMagesGuild = 2,
+            kThievesGuild = 3,
+            kDarkBrotherhood = 4,
+            kCompanionsQuest = 5,
+            kMiscellaneous = 6,
+            kDaedric = 7,
+            kSideQuest = 8,
+            kCivilWar = 9,
+            kDLC01_Vampire = 10,
+            kDLC02_Dragonborn = 11,
+            kStormcloak,
+            kDawnguard,
+            kPlayer,
+            kCustom
+        };
 
-        void Update(RE::NiTransform& a_hand_xform);
+        MapIcon(MapIcon::IconType a_type, const HeldMap* a_map, RE::NiTransform& a_transform,
+            RE::NiPoint2 a_overlap_percent);
 
-        RE::TESQuestTarget* target = nullptr;
-        HeldMap*            owner = nullptr;
-
-    private:
-        static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
-        static constexpr int         n_border = 2;
-
-        static int GetIconType(RE::QUEST_DATA::Type a_type)
+        static IconType GetIconType(RE::QUEST_DATA::Type a_type)
         {
             if (a_type == RE::QUEST_DATA::Type::kCivilWar &&
                 RE::PlayerCharacter::GetSingleton()->IsInFaction(g_stormcloak_faction))
             {
-                return 12;
+                return IconType::kStormcloak;
             }
             else if (a_type == RE::QUEST_DATA::Type::kDLC01_Vampire &&
                 RE::PlayerCharacter::GetSingleton()->IsInFaction(g_dawnguard_faction))
             {
-                return 13;
+                return IconType::kDawnguard;
             }
-            return (int)a_type;
+            return (IconType)a_type;
         }
+
+        void Update(RE::NiPoint2 a_pos);
+
+        const HeldMap* owner = nullptr;
+
+    private:
+        static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
+        static constexpr int         n_border = 2;
 
         void OnCreation();
 
@@ -97,6 +116,8 @@ namespace mapmarker
             return &singleton;
         }
 
+        void OnPlayerEquip(RE::FormID a_equipitem, bool a_equipped);
+
         State GetState() const { return state; }
 
         bool FindActiveMap();
@@ -105,7 +126,9 @@ namespace mapmarker
 
         void ProcessCompassMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_pos);
 
-        void AddMarker(RE::NiPoint2 a_world_pos, RE::QUEST_DATA::Type a_type);
+        void AddMarker(RE::NiPoint2 a_world_pos, MapIcon::IconType a_type);
+
+        void UpdatePlayerMarker();
 
         void Refresh();
 
@@ -118,6 +141,12 @@ namespace mapmarker
         Manager(Manager&&) = delete;
         Manager& operator=(const Manager&) = delete;
         Manager& operator=(Manager&&) = delete;
+
+        bool IsSpellEquipped();
+
+        void DrawPlayerMarker();
+
+        void DrawCustomMarker();
 
         State                                 state = State::kInactive;
         std::vector<std::unique_ptr<MapIcon>> icon_addons;
@@ -134,8 +163,9 @@ namespace mapmarker
 
     RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft);
 
+    RE::NiPoint2 TestOverlap(RE::NiPoint2& a_coords, float a_radius);
+
     bool IsSkyrim(const HeldMap* a_map);
 
     bool IsSolstheim(const HeldMap* a_map);
-
 }

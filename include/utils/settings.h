@@ -15,7 +15,7 @@ namespace settings
 
 		void Init(std::string a_mod_name, RE::FormID a_profile_globalvar = 0);
 
-		float Get(std::string a_setting_editorid);
+		const float Get(const std::string a_setting_editorid);
 
 		void PrintSettings() const;
 

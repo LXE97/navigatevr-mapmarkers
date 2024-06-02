@@ -21,6 +21,9 @@ namespace vrmapmarkers
     {
         static auto mgr = ArtAddonManager::GetSingleton();
         mgr->Update();
+
+        static auto markermgr = mapmarker::Manager::GetSingleton();
+        markermgr->UpdatePlayerMarker();
     }
 
     void Init()
@@ -92,10 +95,7 @@ namespace vrmapmarkers
         if (event->actor &&
             event->actor.get() == RE::PlayerCharacter::GetSingleton()->AsReference())
         {
-            if (mapmarker::Manager::GetSingleton()->IsMap(event->baseObject))
-            {
-                mapmarker::Manager::GetSingleton()->Refresh();
-            }
+            mapmarker::Manager::GetSingleton()->OnPlayerEquip(event->baseObject, event->equipped);
         }
     }
 }

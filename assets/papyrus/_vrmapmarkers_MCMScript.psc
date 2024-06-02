@@ -14,7 +14,7 @@ GlobalVariable Property fSymbolScale Auto
 GlobalVariable Property fRegionalScale Auto
 
 function checkversion()
-	int LatestVersion = 8
+	int LatestVersion = 0
 	if (ModVersionState < LatestVersion)
 		debug.trace(ModName + " update from v " + ModVersionState + " to " + LatestVersion)
 		init()
@@ -75,9 +75,9 @@ function init()
 	ShowPlayerStr[2] = "Clairvoyance"
 
 	PlayerStyles = new String[7] 
-	PlayerStyles[0] = "Magic Wisp"
+	PlayerStyles[0] = "Magic Glyph"
 	PlayerStyles[1] = "Dovahkiin"
-	PlayerStyles[2] = "Dovahkiin Glow"
+	PlayerStyles[2] = "Magic Dovahkiin"
 	PlayerStyles[3] = "Border 0"
 	PlayerStyles[4] = "Border 1"
 	PlayerStyles[5] = "Border 2"
@@ -93,7 +93,7 @@ function init()
 	BorderStyles  = new String[4]
 	BorderStyles[0] = "Scribble"
 	BorderStyles[1] = "Clean Circle"
-	BorderStyles[2] = "Celtic"
+	BorderStyles[2] = "Knot"
 	BorderStyles[3] = "X"
 
 endfunction
@@ -208,7 +208,7 @@ endstate
 ; Main page
 state OID_bDebugLog
 	event OnHighlightST()
-		SetInfoText("See: Documents/My Games/Skyrim VR/SKSE/" + dllname + ".log")
+		SetInfoText("Print extra debug info, see: Documents/My Games/Skyrim VR/SKSE/" + dllname + ".log")
 	endevent
 	Event OnSelectST()
 		changed = true
@@ -240,7 +240,7 @@ endstate
 
 state OID_fBorderScale
 	event OnHighlightST()
-		SetInfoText("Size of the marker outlines")
+		SetInfoText("Size of the marker outlines (includes player and custom markers)")
 	endevent
 	event OnSliderOpenST()
 		SetSliderDialogStartValue(fBorderScale.GetValue())
@@ -323,7 +323,7 @@ endstate
 
 state OID_ProfileMenu
 	event OnHighlightST()
-		SetInfoText("<-!->   Changes are only saved when the MCM is closed   <-!->")
+		SetInfoText("Changes are only saved when the MCM is closed")
 	endevent
 	event OnMenuOpenST()		
 		SetMenuDialogStartIndex(profileindex)
