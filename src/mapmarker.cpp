@@ -111,6 +111,8 @@ namespace mapmarker
                 icon_addons.emplace_back(std::make_unique<MapIcon>(a_type, active_map->isLeft,
                     icon_transform, IsSkyrim(active_map), RE::NiPoint2(x_overlap, y_overlap)));
 
+                    
+
                 _DEBUGLOG(" Marker added with local position: {} {} {}",
                     VECTOR(icon_transform.translate));
             }
@@ -173,7 +175,7 @@ namespace mapmarker
 
     void Manager::ProcessCompassMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_pos)
     {
-        // Stop if we've already seen this quest target (for some reason std::find won't work)
+        // Stop if we've already seen this quest target
         for (auto p : seen_targets)
         {
             if (p == (uintptr_t)a_target)
@@ -191,12 +193,11 @@ namespace mapmarker
                 if (obj->targets[i] == a_target)
                 {
                     _DEBUGLOG("Adding quest marker for {}", obj->ownerQuest->GetName());
-                    
+
                     auto t = obj->ownerQuest->GetType();
 
-                    SKSE::GetTaskInterface()->AddTask([a_pos, t]() {
-                        Manager::GetSingleton()->AddMarker(a_pos, t);
-                    });
+                    SKSE::GetTaskInterface()->AddTask(
+                        [a_pos, t]() { Manager::GetSingleton()->AddMarker(a_pos, t); });
 
                     return;
                 }

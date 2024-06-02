@@ -6,16 +6,14 @@ namespace hooks
     float                g_marker_y = 0.f;
     RE::TESQuestTarget** g_target = nullptr;
 
-    int c = 0xbeef;
-
     void QuestUpdateHook()
     {
-        if (g_target &&
-            mapmarker::Manager::GetSingleton()->GetState() == mapmarker::Manager::State::kWaiting)
+        static auto mgr = mapmarker::Manager::GetSingleton();
+
+        if (g_target && mgr->GetState() == mapmarker::Manager::State::kWaiting)
         {
             auto real_target = *(g_target);
-            mapmarker::Manager::GetSingleton()->ProcessCompassMarker(
-                real_target, { g_marker_x, g_marker_y });
+            mgr->ProcessCompassMarker(real_target, { g_marker_x, g_marker_y });
         }
     }
 
