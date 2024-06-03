@@ -1,5 +1,7 @@
 #include "main_plugin.h"
 
+#include "settings.h"
+
 #include <chrono>
 
 namespace vrmapmarkers
@@ -22,6 +24,8 @@ namespace vrmapmarkers
     {
         static auto mgr = ArtAddonManager::GetSingleton();
         mgr->Update();
+
+        mapmarker::UpdatePlayerMarker();
     }
 
     void Init()
@@ -44,6 +48,8 @@ namespace vrmapmarkers
             return;
         }
 
+        settings::Manager::GetSingleton()->Init("vrmapmarkers", 0x801);
+
         // Mapmarker initialization
         mapmarker::g_dawnguard_faction =
             helper::GetForm<RE::TESFaction>(g_dawnguard_faction_id, g_dawnguard_plugin_name);
@@ -52,8 +58,6 @@ namespace vrmapmarkers
             RE::TESForm::LookupByID<RE::TESFaction>(g_stormcloak_faction_id);
 
         mapmarker::g_mod_index = g_mod_index;
-
-        ReadConfig(g_ini_path);
 
         menuchecker::begin();
 
@@ -73,6 +77,10 @@ namespace vrmapmarkers
         _DEBUGLOG("Load Game: reset state");
         ArtAddonManager::GetSingleton()->OnGameLoad();
 
+        settings::Manager::GetSingleton()->PrintSettings();
+
+        mapmarker::RefreshSettings();
+
         mapmarker::ClearMarkers();
         if (RE::PlayerCharacter::GetSingleton()->GetCurrent3D()) { mapmarker::UpdateMapMarkers(); }
     }
@@ -82,8 +90,10 @@ namespace vrmapmarkers
         if (!evn->opening && std::strcmp(evn->menuName.data(), "Journal Menu") == 0 ||
             (mapmarker::g_show_playermarker && std::strcmp(evn->menuName.data(), "MapMenu") == 0))
         {
-            ReadConfig(g_ini_path);
+            g_debug_print = settings::Manager::GetSingleton()->Get("bDebugLog");
 
+            settings::Manager::GetSingleton()->PrintSettings();
+            mapmarker::RefreshSettings();
             mapmarker::ClearMarkers();
             mapmarker::UpdateMapMarkers();
         }
@@ -94,7 +104,9 @@ namespace vrmapmarkers
         if (event->actor &&
             event->actor.get() == RE::PlayerCharacter::GetSingleton()->AsReference())
         {
-            if (helper::GetFormIndex(event->baseObject) == g_mod_index)
+            if (helper::GetFormIndex(event->baseObject) == g_mod_index &&
+                ((event->baseObject & 0xffff) != 0xe09d) &&
+                ((event->baseObject & 0xffff) != 0x0d62))  // exclusions for compass
             {
                 _DEBUGLOG("player {} {:x}", event->equipped ? "equipped" : "unequipped",
                     event->baseObject);
@@ -103,61 +115,5 @@ namespace vrmapmarkers
                 if (event->equipped) { mapmarker::UpdateMapMarkers(); }
             }
         }
-    }
-
-    bool ReadConfig(const char* a_ini_path)
-    {
-        using namespace std::filesystem;
-        static std::filesystem::file_time_type last_read = {};
-
-        auto config_path = helper::GetGamePath() / a_ini_path;
-
-        if (auto setting = RE::GetINISetting("bLeftHandedMode:VRInput"))
-        {
-            g_left_hand_mode = setting->GetBool();
-        }
-
-        SKSE::log::info("bLeftHandedMode: {}\n ", g_left_hand_mode);
-
-        try
-        {
-            auto last_write = last_write_time(config_path);
-
-            if (last_write > last_read)
-            {
-                std::ifstream config(config_path);
-                if (config.is_open())
-                {
-                    mapmarker::g_use_symbols = helper::ReadIntFromIni(config, "bUseSymbols");
-                    mapmarker::selected_border = helper::ReadIntFromIni(config, "iBorder") % 4;
-                    mapmarker::g_border_scale =
-                        std::clamp(helper::ReadFloatFromIni(config, "fBorderScale"), 0.2f, 10.f);
-                    mapmarker::g_symbol_scale =
-                        std::clamp(helper::ReadFloatFromIni(config, "fSymbolScale"), 0.2f, 10.f);
-                    mapmarker::g_regional_scale =
-                        std::clamp(helper::ReadFloatFromIni(config, "fRegionalScale"), 0.2f, 10.f);
-                    mapmarker::g_show_playermarker =
-                        helper::ReadIntFromIni(config, "bShowCustomMarker");
-                    mapmarker::g_show_player = helper::ReadIntFromIni(config, "bShowPlayer");
-
-                    g_debug_print = helper::ReadIntFromIni(config, "bDebug");
-
-                    config.close();
-                    last_read = last_write_time(config_path);
-                    return true;
-                }
-                else
-                {
-                    SKSE::log::error("error opening ini");
-                    last_read = file_time_type{};
-                }
-            }
-            else { _DEBUGLOG("ini not read (no changes)"); }
-        } catch (const filesystem_error&)
-        {
-            SKSE::log::error("ini not found, using defaults");
-            last_read = file_time_type{};
-        }
-        return false;
     }
 }

@@ -11,7 +11,7 @@ namespace mapmarker
 
     // User Settings
     extern bool  g_use_symbols;
-    extern int   selected_border;
+    extern int   g_selected_border;
     extern float g_border_scale;
     extern float g_symbol_scale;
     extern float g_regional_scale;
@@ -61,6 +61,8 @@ namespace mapmarker
         MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
             bool a_global, RE::NiPoint2 a_overlap_percent);
 
+        void Update(const HeldMap* map, RE::NiPoint2 pos);
+
     private:
         static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
         static constexpr int         n_border = 2;
@@ -87,6 +89,8 @@ namespace mapmarker
         bool                   global = false;
         RE::NiPoint2           edge_overlap;
     };
+
+    void UpdatePlayerMarker();
 
     void UpdateMapMarkers();
 
@@ -115,5 +119,7 @@ namespace mapmarker
     bool IsSkyrim(const HeldMap* a_map);
 
     bool IsSolstheim(const HeldMap* a_map);
+
+    void RefreshSettings();
 
 }

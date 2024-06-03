@@ -2,6 +2,7 @@
 
 #include "main_plugin.h"
 #include "mapmarker_resources.h"
+#include "settings.h"
 
 namespace mapmarker
 {
@@ -10,7 +11,8 @@ namespace mapmarker
 
     // User Settings
     bool  g_use_symbols = true;
-    int   selected_border = 0;
+    int   g_selected_border = 0;
+    int   g_player_border = 0;
     float g_border_scale = 1.5;
     float g_symbol_scale = 1.0;
     float g_regional_scale = 1.5;
@@ -19,6 +21,7 @@ namespace mapmarker
 
     // State
     std::vector<std::unique_ptr<mapmarker::MapIcon>> g_icon_addons;
+    std::unique_ptr<mapmarker::MapIcon>              g_player_marker;
     int                                              g_mod_index = 0;
 
     MapIcon::MapIcon(RE::QUEST_DATA::Type a_type, bool isLeft, RE::NiTransform& a_transform,
@@ -31,6 +34,15 @@ namespace mapmarker
         model = art_addon::ArtAddon::Make(icon_path, pc,
             pc->Get3D(false)->GetObjectByName(isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
             a_transform, std::bind(&MapIcon::OnCreation, this));
+    }
+
+    void MapIcon::Update(const HeldMap* map, RE::NiPoint2 pos)
+    {
+        if (model && model->Get3D())
+        {
+            auto xform = MapToHand(WorldToMap(pos, map), map->isLeft);
+            model->Get3D()->local = xform;
+        }
     }
 
     void MapIcon::OnCreation()
@@ -55,7 +67,14 @@ namespace mapmarker
             if (border)
             {
                 int x, y;
-                helper::Arrayize(selected_border, n_border, n_border, x, y);
+                helper::Arrayize(g_selected_border, n_border, n_border, x, y);
+
+                if (edge_overlap.x == 5.0f)
+                {
+                    edge_overlap.x = 0;
+
+                    helper::Arrayize(g_player_border, n_border, n_border, x, y);
+                }  // quick hack to identify player
 
                 // offset icon due to map edge
                 constexpr float maximum_border_offset = 0.2;
@@ -91,6 +110,13 @@ namespace mapmarker
                     AddMarker(target, map);
                 }
             }
+
+            if (g_show_player)
+            {
+                RE::NiTransform temp;
+                g_player_marker = std::make_unique<MapIcon>(RE::QUEST_DATA::Type::kNone,
+                    map->isLeft, temp, IsSkyrim(map), RE::NiPoint2(5, 0));
+            }
         }
         else { _DEBUGLOG("No map equipped"); }
     }
@@ -98,11 +124,15 @@ namespace mapmarker
     const HeldMap* GetActiveMap()
     {
         RE::FormID mapform = NULL;
-        if (auto right_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kRightMapSlot))
+        if (auto right_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kRightMapSlot);
+            right_worn && (right_worn->formID & 0xffff) != 0xe09d &&
+            (right_worn->formID & 0xffff) != 0x0d62)
         {
             mapform = right_worn->formID;
         }
-        else if (auto left_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kLeftMapSlot))
+        else if (auto left_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kLeftMapSlot);
+                 left_worn && (left_worn->formID & 0xffff) != 0xe09d &&
+                 (left_worn->formID & 0xffff) != 0x0d62)
         {
             mapform = left_worn->formID;
         }
@@ -116,6 +146,22 @@ namespace mapmarker
             }
         }
         return nullptr;
+    }
+
+    void UpdatePlayerMarker()
+    {
+        static int c = 0;
+        if (g_player_marker)
+        {
+            if (auto map = GetActiveMap())
+            {
+                if (++c % 40 == 0)
+                {
+                    auto pos = RE::PlayerCharacter::GetSingleton()->GetPosition();
+                    g_player_marker->Update(map, { pos.x, pos.y });
+                }
+            }
+        }
     }
 
     std::vector<QuestTarget> GetTrackedRefs()
@@ -145,12 +191,6 @@ namespace mapmarker
                         result.push_back({ ref, RE::QUEST_DATA::Type::kNone });
                     }
                 }
-        }
-
-        if (g_show_player)
-        {
-            result.push_back({ RE::PlayerCharacter::GetSingleton()->AsReference(),
-                RE::QUEST_DATA::Type::kNone });
         }
 
         return result;
@@ -328,6 +368,7 @@ namespace mapmarker
     {
         _DEBUGLOG("Clearing markers");
         g_icon_addons.clear();
+        g_player_marker.reset();
     }
 
     bool IsSkyrim(const HeldMap* a_map) { return a_map->location_form == HoldLocations::Tamriel; }
@@ -335,5 +376,18 @@ namespace mapmarker
     bool IsSolstheim(const HeldMap* a_map)
     {
         return a_map->location_form == HoldLocations::Solstheim;
+    }
+
+    void RefreshSettings()
+    {
+        auto mgr = settings::Manager::GetSingleton();
+        g_use_symbols = mgr->Get("bUseSymbols");
+        g_selected_border = mgr->Get("iBorderStyle");
+        g_border_scale = mgr->Get("fBorderScale");
+        g_symbol_scale = mgr->Get("fSymbolScale");
+        g_regional_scale = mgr->Get("fRegionalScale");
+        g_show_playermarker = mgr->Get("iShowCustom");
+        g_show_player = mgr->Get("iShowPlayer");
+        g_player_border = mgr->Get("iPlayerStyle");
     }
 }
