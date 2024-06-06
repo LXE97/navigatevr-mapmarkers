@@ -73,6 +73,8 @@ namespace helper
 
     void SetUvUnique(RE::NiAVObject* a_target, float a_x, float a_y, const char* a_nodename = nullptr);
 
+    void SetGlowMult(float a_value, RE::NiAVObject* a_target, const char* a_nodename = nullptr);
+
     void        PrintActorModelEffects(RE::TESObjectREFR* a_actor);
     void        PrintPlayerShaderEffects();
     inline void PrintVec(RE::NiPoint3& v) { SKSE::log::trace("{} {} {}", v.x, v.y, v.z); }
@@ -88,6 +90,7 @@ namespace helper
     std::string           ReadStringFromIni(std::ifstream& a_file, std::string a_setting);
     bool                  ReadConfig(const char* a_ini_path);
 
+    /* a_mod_name: name of the .esp, including the file extension */
     template <typename T>
     T* GetForm(const RE::FormID a_lower_id, std::string a_mod_name)
     {

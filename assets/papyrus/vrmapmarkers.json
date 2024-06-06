@@ -1,0 +1,14 @@
+{
+  "Default": {
+    "bDebugLog": 0.0,
+    "bShowCustom": 1.0,
+    "bShowPlayer": 0.0,
+    "bUseSymbols": 1.0,
+    "fBorderScale": 1.0,
+    "fRegionalScale": 1.5,
+    "fSymbolScale": 1.0,
+    "iBorderStyle": 0.0,
+    "iCustomStyle": 0.0,
+    "iPlayerStyle": 0.0
+  }
+}

@@ -5,13 +5,13 @@
 
 namespace menuchecker
 {
-	extern std::vector<std::string> gameStoppingMenus;
+    extern std::vector<std::string> gameStoppingMenus;
 
-	extern std::unordered_map<std::string, bool> menuTypes;
+    extern std::unordered_map<std::string, bool> menuTypes;
 
-	bool isGameStopped();
+    bool isGameStopped();
 
-	void begin();
+    void begin();
 
-	void onMenuOpenClose(RE::MenuOpenCloseEvent const* evn);
+    void onMenuOpenClose(RE::MenuOpenCloseEvent const* evn);
 }

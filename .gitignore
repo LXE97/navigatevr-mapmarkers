@@ -6,3 +6,6 @@ cmake-build*
 nexusreadme.txt
 details.txt
 assets/*
+!assets/papyrus/
+!assets/papyrus/** 
+
