@@ -6,23 +6,18 @@ GlobalVariable Property bDebugLog Auto
 GlobalVariable Property iBorderStyle Auto
 GlobalVariable Property iPlayerStyle Auto
 GlobalVariable Property iCustomStyle Auto
-GlobalVariable Property bUseSymbols Auto
+GlobalVariable Property iShowSymbol Auto
 GlobalVariable Property iShowPlayer Auto
 GlobalVariable Property iShowCustom Auto
 GlobalVariable Property fBorderScale Auto
 GlobalVariable Property fSymbolScale Auto
 GlobalVariable Property fRegionalScale Auto
+GlobalVariable Property fPlayerScale Auto
+GlobalVariable Property fBrightness Auto
 
-function checkversion()
-	int LatestVersion = 0
-	if (ModVersionState < LatestVersion)
-		debug.trace(ModName + " update from v " + ModVersionState + " to " + LatestVersion)
-		init()
-		ModVersionState = LatestVersion
-	endif
+Int function GetVersion()
+	return 1
 endfunction
-
-int ModVersionState = 0
 
 String dllname = "vrmapmarkers"
 
@@ -31,7 +26,7 @@ String[] ModSettingsStrings
 String[] Profiles
 String[] ShowPlayerStr
 String[] PlayerStyles
-String[] CustomStyles
+String[] SymbolOptions
 String[] BorderStyles
 
 ; this is just for keeping track of the selection in the profile dropdown
@@ -44,27 +39,38 @@ int SettingsFile = 0
 bool changed = false
 bool error = false
 
-function init()
-	debug.trace("Initializing VR Map Markers")
+; -------------------------------------------------------------------------------------------------
+; MAIN EVENTS
+; -------------------------------------------------------------------------------------------------
+Event OnVersionUpdate(int a_version)
+	If (a_version > CurrentVersion)
+		debug.trace(ModName + " update from " + CurrentVersion + " to " + a_version)
+		OnConfigInit()
+	EndIf
+EndEvent
+
+event OnConfigInit()
+	debug.trace("Initializing " + ModName)
+
+    ;initialize MCM variables
+    Pages = New String[1]
+    Pages[0] = "Mod Settings"
 
 	; these are the keys for the mod settings in the json, but they must be in the same order as 
 	; the settings in the FormList ModSettings 
-	ModSettingsStrings = New String[10]
+	ModSettingsStrings = New String[12]
 	ModSettingsStrings[0]  = "bDebugLog"
 	ModSettingsStrings[1]  = "iBorderStyle"
 	ModSettingsStrings[2]  = "iPlayerStyle"
 	ModSettingsStrings[3]  = "iCustomStyle"
-	ModSettingsStrings[4]  = "bUseSymbols"
+	ModSettingsStrings[4]  = "iShowSymbol" 
 	ModSettingsStrings[5]  = "bShowPlayer"
 	ModSettingsStrings[6]  = "bShowCustom"
 	ModSettingsStrings[7]  = "fBorderScale"
 	ModSettingsStrings[8]  = "fSymbolScale"
 	ModSettingsStrings[9]  = "fRegionalScale"
-
-    ;initialize MCM variables
-    Pages = New String[2]
-    Pages[0] = "Mod Settings"
-	Pages[1] = "Styles"
+	ModSettingsStrings[10]  = "fPlayerScale"
+	ModSettingsStrings[11]  = "fBrightness"
 
 	Profiles = New String[1]
 	Profiles[0] = "Default"
@@ -74,42 +80,33 @@ function init()
 	ShowPlayerStr[1] = "Always"
 	ShowPlayerStr[2] = "Clairvoyance"
 
-	PlayerStyles = new String[7] 
-	PlayerStyles[0] = "Magic Glyph"
+	PlayerStyles = new String[8] 
+	PlayerStyles[0] = "Arrow"
 	PlayerStyles[1] = "Dovahkiin"
-	PlayerStyles[2] = "Magic Dovahkiin"
-	PlayerStyles[3] = "Border 0"
-	PlayerStyles[4] = "Border 1"
-	PlayerStyles[5] = "Border 2"
-	PlayerStyles[6] = "Border 3"
+	PlayerStyles[2] = "Magnus"
+	PlayerStyles[3] = "Star"
+	PlayerStyles[4] = "Scribble"
+	PlayerStyles[5] = "Clean Circle"
+	PlayerStyles[6] = "Knot"
+	PlayerStyles[7] = "Runes"
 
-	CustomStyles = new String[5] 	
-	CustomStyles[0] = "Target"
-	CustomStyles[1] = "Border 0"
-	CustomStyles[2] = "Border 1"
-	CustomStyles[3] = "Border 2"
-	CustomStyles[4] = "Border 3"
+	SymbolOptions = new String[4] 	
+	SymbolOptions[0] = "No Symbols"
+	SymbolOptions[1] = "X"
+	SymbolOptions[2] = "Factions Only"
+	SymbolOptions[3] = "Faction or X (misc)"
 
-	BorderStyles  = new String[4]
-	BorderStyles[0] = "Scribble"
-	BorderStyles[1] = "Clean Circle"
-	BorderStyles[2] = "Knot"
-	BorderStyles[3] = "X"
+	BorderStyles  = new String[5]
+	BorderStyles[0] = "No Border"
+	BorderStyles[1] = "Scribble"
+	BorderStyles[2] = "Clean Circle"
+	BorderStyles[3] = "Knot"
+	BorderStyles[4] = "Runes"
 
-endfunction
-
-; -------------------------------------------------------------------------------------------------
-; MAIN EVENTS
-; -------------------------------------------------------------------------------------------------
-event OnConfigInit() ;this only runs once per new game
 	ReadJSONFile()
-
-	init()
 endevent
 
 event OnConfigOpen()
-	CheckVersion()
-
     ReadJSONFile()
 	ForcePageReset()
 endevent
@@ -135,25 +132,25 @@ event OnPageReset(String a_page)
 		if (a_page == "" || a_page == "Mod Settings")
 			SetCursorFillMode(TOP_TO_BOTTOM)
 			; Left side - main mod options
-			AddHeaderOption("Misc Settings")
-			AddSliderOptionST("OID_fBorderScale", "Border Radius", fBorderScale.GetValue(), "{1}")
-			AddSliderOptionST("OID_fSymbolScale", "Symbol Radius", fSymbolScale.GetValue(), "{1}")
-			AddSliderOptionST("OID_fRegionalScale", "Regional Scale", fRegionalScale.GetValue(), "{1}")
-			AddToggleOptionST("OID_bUseSymbols", "Use Faction Symbols", bUseSymbols.GetValueInt())
 			AddMenuOptionST("OID_iShowPlayer", "Show Player Location", ShowPlayerStr[iShowPlayer.GetValueInt()])
 			AddMenuOptionST("OID_iShowCustom", "Show Custom Marker", ShowPlayerStr[iShowCustom.GetValueInt()])
-
+			AddMenuOptionST("OID_iShowSymbol", "Show Symbols", SymbolOptions[iShowSymbol.GetValueInt()])
+			AddHeaderOption("Appearance")
+			AddMenuOptionST("OID_iBorderStyle", "Quest Border Style", BorderStyles[iBorderStyle.GetValueInt()])
+			AddMenuOptionST("OID_iPlayerStyle", "Player Marker Style", PlayerStyles[iPlayerStyle.GetValueInt()])
+			AddMenuOptionST("OID_iCustomStyle", "Custom Marker Style", PlayerStyles[iCustomStyle.GetValueInt()])
+			AddSliderOptionST("OID_fBrightness", "Brightness", fBrightness.GetValue(), "{1}")
+			AddSliderOptionST("OID_fBorderScale", "Border Radius", fBorderScale.GetValue(), "{1}")
+			AddSliderOptionST("OID_fSymbolScale", "Symbol Scale", fSymbolScale.GetValue(), "{1}")
+			AddSliderOptionST("OID_fRegionalScale", "Regional Scale", fRegionalScale.GetValue(), "{1}")
+			AddSliderOptionST("OID_fPlayerScale", "Player Scale", fPlayerScale.GetValue(), "{1}")
+	
 			; Right side - system options
 			SetCursorPosition(1)
 			AddHeaderOption("Plugin Settings")
 			AddMenuOptionST("OID_ProfileMenu", "Profile", SelectedProfile)
 			AddToggleOptionST("OID_bDebugLog", "Enable Debug Log", bDebugLog.GetValueInt())
 		
-		elseif (a_page == "Styles")
-			SetCursorFillMode(TOP_TO_BOTTOM)
-			AddMenuOptionST("OID_iBorderStyle", "Quest Border Style", BorderStyles[iBorderStyle.GetValueInt()])
-			AddMenuOptionST("OID_iPlayerStyle", "Player Marker Symbol", PlayerStyles[iPlayerStyle.GetValueInt()])
-			AddMenuOptionST("OID_iCustomStyle", "Custom Marker Symbol", CustomStyles[iCustomStyle.GetValueInt()])
 		endif
 	endif
 endevent
@@ -196,12 +193,12 @@ state OID_iCustomStyle
 	event OnMenuOpenST()		
 		SetMenuDialogStartIndex(iCustomStyle.GetValueInt())
 		SetMenuDialogDefaultIndex(iCustomStyle.GetValueInt())
-		SetMenuDialogOptions(CustomStyles)
+		SetMenuDialogOptions(PlayerStyles)
 	endevent
 	event OnMenuAcceptST(int index)
 		changed = true
 		iCustomStyle.SetValueInt(index)
-		SetMenuOptionValueST(CustomStyles[index])
+		SetMenuOptionValueST(PlayerStyles[index])
 	endevent 
 endstate
 
@@ -222,30 +219,14 @@ state OID_bDebugLog
     endevent
 endstate
 
-state OID_bUseSymbols
-	event OnHighlightST()
-		SetInfoText("Add faction-specific symbols to relevant quest markers")
-	endevent
-	Event OnSelectST()
-		changed = true
-		if bUseSymbols.GetValueInt()
-            SetToggleOptionValueST(false)
-			bUseSymbols.SetValueInt(0)
-        Else
-            SetToggleOptionValueST(true)
-			bUseSymbols.SetValueInt(1)
-        endif
-    endevent
-endstate
-
 state OID_fBorderScale
 	event OnHighlightST()
-		SetInfoText("Size of the marker outlines (includes player and custom markers)")
+		SetInfoText("Size of the marker outlines and custom marker")
 	endevent
 	event OnSliderOpenST()
 		SetSliderDialogStartValue(fBorderScale.GetValue())
 		SetSliderDialogDefaultValue(fBorderScale.GetValue())
-		SetSliderDialogRange(0.5, 3.0)
+		SetSliderDialogRange(0.5, 4.0)
 		SetSliderDialogInterval(0.1)
 	endEvent
 	event OnSliderAcceptST(float value)
@@ -262,7 +243,7 @@ state OID_fSymbolScale
 	event OnSliderOpenST()
 		SetSliderDialogStartValue(fSymbolScale.GetValue())
 		SetSliderDialogDefaultValue(fSymbolScale.GetValue())
-		SetSliderDialogRange(0.5, 3.0)
+		SetSliderDialogRange(0.5, 4.0)
 		SetSliderDialogInterval(0.1)
 	endEvent
 	event OnSliderAcceptST(float value)
@@ -274,17 +255,51 @@ endState
 
 state OID_fRegionalScale
 	event OnHighlightST()
-		SetInfoText("Multiply the border and symbol size for regional (zoomed-in) maps")
+		SetInfoText("Magnify all markers by this amount on regional (zoomed-in) maps")
 	endevent
 	event OnSliderOpenST()
 		SetSliderDialogStartValue(fRegionalScale.GetValue())
 		SetSliderDialogDefaultValue(fRegionalScale.GetValue())
-		SetSliderDialogRange(0.5, 3.0)
+		SetSliderDialogRange(0.5, 4.0)
 		SetSliderDialogInterval(0.1)
 	endEvent
 	event OnSliderAcceptST(float value)
 		changed = true
 		fRegionalScale.SetValue(value)
+		SetSliderOptionValueST(value, "{1}")
+	endEvent
+endState
+
+state OID_fPlayerScale
+	event OnHighlightST()
+		SetInfoText("Size of the player marker")
+	endevent
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(fPlayerScale.GetValue())
+		SetSliderDialogDefaultValue(fPlayerScale.GetValue())
+		SetSliderDialogRange(0.5, 4.0)
+		SetSliderDialogInterval(0.1)
+	endEvent
+	event OnSliderAcceptST(float value)
+		changed = true
+		fPlayerScale.SetValue(value)
+		SetSliderOptionValueST(value, "{1}")
+	endEvent
+endState
+
+state OID_fBrightness
+	event OnHighlightST()
+		SetInfoText("Increase the brightness of all markers")
+	endevent
+	event OnSliderOpenST()
+		SetSliderDialogStartValue(fBrightness.GetValue())
+		SetSliderDialogDefaultValue(fBrightness.GetValue())
+		SetSliderDialogRange(0.0, 4.0)
+		SetSliderDialogInterval(0.1)
+	endEvent
+	event OnSliderAcceptST(float value)
+		changed = true
+		fBrightness.SetValue(value)
 		SetSliderOptionValueST(value, "{1}")
 	endEvent
 endState
@@ -318,6 +333,22 @@ state OID_iShowCustom
 		changed = true
 		iShowCustom.SetValueInt(index)
 		SetMenuOptionValueST(ShowPlayerStr[index])
+	endevent 
+endstate
+
+state OID_iShowSymbol
+	event OnHighlightST()
+		SetInfoText("Displays a symbol pertaining to the quest type in addition to the border")
+	endevent
+	event OnMenuOpenST()		
+		SetMenuDialogStartIndex(iShowSymbol.GetValueInt())
+		SetMenuDialogDefaultIndex(iShowSymbol.GetValueInt())
+		SetMenuDialogOptions(SymbolOptions)
+	endevent
+	event OnMenuAcceptST(int index)
+		changed = true
+		iShowSymbol.SetValueInt(index)
+		SetMenuOptionValueST(SymbolOptions[index])
 	endevent 
 endstate
 
@@ -358,9 +389,17 @@ function SettingsToJSON(bool write, int _profile)
 		GlobalVariable localsetting = ModSettings.GetAt(i) as GlobalVariable
 
 		if (write)
-			JMap.setFlt(_profile, ModSettingsStrings[i], localsetting.GetValue())
+			String type = StringUtil.GetNthChar(ModSettingsStrings[i], 0)
+			if (type == "f")
+				JMap.setFlt(_profile, ModSettingsStrings[i], localsetting.GetValue())
+			else 
+				JMap.setInt(_profile, ModSettingsStrings[i], localsetting.GetValueInt())
+			endif
 		else 
-			localsetting.SetValue(JMap.getFlt(_profile, ModSettingsStrings[i]))
+			float read = JMap.getFlt(_profile, ModSettingsStrings[i])
+			if (read > 0)
+				localsetting.SetValue(read)
+			endif
 		endif
 
 		i = i - 1

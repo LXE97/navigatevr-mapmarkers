@@ -73,6 +73,8 @@ namespace helper
 
     void SetUvUnique(RE::NiAVObject* a_target, float a_x, float a_y, const char* a_nodename = nullptr);
 
+    void SetGlowMult(float a_value, RE::NiAVObject* a_target, const char* a_nodename = nullptr);
+
     void        PrintActorModelEffects(RE::TESObjectREFR* a_actor);
     void        PrintPlayerShaderEffects();
     inline void PrintVec(RE::NiPoint3& v) { SKSE::log::trace("{} {} {}", v.x, v.y, v.z); }

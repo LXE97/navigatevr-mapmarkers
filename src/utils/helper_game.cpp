@@ -107,7 +107,16 @@ namespace helper
         return std::clamp(a_a->GetVoiceRecoveryTime() / a_MaxCDTime, 0.f, 100.f);
     }
 
-    void SetGlowMult() {}
+    void SetGlowMult(float a_value, RE::NiAVObject* a_target, const char* a_nodename)
+    {
+        if (auto shaderprop = helper::GetShaderProperty(a_target, a_nodename))
+        {
+            if (auto shader = netimmerse_cast<RE::BSLightingShaderProperty*>(shaderprop))
+            {
+                shader->emissiveMult = a_value;
+            }
+        }
+    }
 
     void SetGlowColor(NiAVObject* a_target, int a_color_hex)
     {
@@ -158,7 +167,7 @@ namespace helper
             auto newmat = oldmat->Create();
             newmat->CopyMembers(oldmat);
             shader->material = newmat;
-            newmat->IncRef();
+            //newmat->IncRef();
             oldmat->DecRef();
 
             newmat->texCoordOffset[0].x = a_x;

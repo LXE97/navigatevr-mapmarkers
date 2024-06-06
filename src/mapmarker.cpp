@@ -17,7 +17,7 @@ namespace mapmarker
         type = a_type;
         owner = a_map;
         edge_overlap = a_overlap_percent;
-        model = art_addon::ArtAddon::Make(icon_path, pc,
+        model = art_addon::ArtAddon::Make(type > kCustom ? kIconPathAlt : kIconPath, pc,
             pc->Get3D(false)->GetObjectByName(
                 a_map->isLeft ? "NPC L Hand [LHnd]" : "NPC R Hand [RHnd]"),
             a_transform, std::bind(&MapIcon::OnCreation, this));
@@ -28,11 +28,14 @@ namespace mapmarker
         _DEBUGLOG("marker creation {}", (void*)this);
         if (model && model->Get3D())
         {
-            // fix z fighting
-            model->Get3D()->local.translate.z += (float)std::rand() / RAND_MAX * 0.01;
-
             auto symbol = model->Get3D()->GetObjectByName("Symbol");
             auto border = model->Get3D()->GetObjectByName("Border");
+
+            if (settings::Manager::GetSingleton()->Get("fBrightness") > 0.f)
+            {
+                helper::SetGlowMult(settings::Manager::GetSingleton()->Get("fBrightness"), border);
+                helper::SetGlowMult(settings::Manager::GetSingleton()->Get("fBrightness"), symbol);
+            }
 
             if (!IsSkyrim(owner))
             {
@@ -40,11 +43,27 @@ namespace mapmarker
                     settings::Manager::GetSingleton()->Get("fRegionalScale");
             }
 
-            // Select symbol and border
-            if (settings::Manager::GetSingleton()->Get("bUseSymbols") && symbol)
+            // Select symbol for non-Player, non-Custom markers
+            if (type < 14 && settings::Manager::GetSingleton()->Get("iShowSymbol") && symbol)
             {
                 int x, y;
-                helper::Arrayize(type, 4, 4, x, y);
+
+                int symbol_option = settings::Manager::GetSingleton()->Get("iShowSymbol");
+
+                if (symbol_option == 1)
+                {  // index of "X" marker. option = "only Xes"
+                    helper::Arrayize(14, 4, 4, x, y);
+                }
+                else if (symbol_option == 2)
+                {  // "faction only"
+                    helper::Arrayize(type, 4, 4, x, y);
+                }
+                else
+                {  // do faction specific or X for non faction types
+                    if (type == 0 || type == 6 || type == 8) { helper::Arrayize(14, 4, 4, x, y); }
+                    else { helper::Arrayize(type, 4, 4, x, y); }
+                }
+
                 helper::SetUvUnique(symbol, (float)x / 4, (float)y / 4);
                 symbol->local.scale = settings::Manager::GetSingleton()->Get("fSymbolScale");
             }
@@ -52,8 +71,46 @@ namespace mapmarker
             if (border)
             {
                 int x, y;
-                helper::Arrayize(settings::Manager::GetSingleton()->Get("iBorderStyle"), n_border,
-                    n_border, x, y);
+
+                switch (type)
+                {
+                case MapIcon::IconType::kPlayerAlt:
+                    {
+                        auto style = settings::Manager::GetSingleton()->Get("iPlayerStyle");
+                        if (style > 3) style -= 4;
+                    }
+                case MapIcon::IconType::kPlayer:
+                    helper::Arrayize(settings::Manager::GetSingleton()->Get("iPlayerStyle"),
+                        n_border, n_border, x, y);
+                    border->parent->local.scale =
+                        settings::Manager::GetSingleton()->Get("fPlayerScale");
+                    break;
+                case MapIcon::IconType::kCustomAlt:
+                    {
+                        auto style = settings::Manager::GetSingleton()->Get("iCustomStyle");
+                        if (style > 3) style -= 4;
+                    }
+                case MapIcon::IconType::kCustom:
+                    helper::Arrayize(settings::Manager::GetSingleton()->Get("iCustomStyle"),
+                        n_border, n_border, x, y);
+                    border->parent->local.scale =
+                        settings::Manager::GetSingleton()->Get("fBorderScale");
+                    break;
+                default:
+                    if (settings::Manager::GetSingleton()->Get("iBorderStyle"))
+                    {
+                        helper::Arrayize(settings::Manager::GetSingleton()->Get("iBorderStyle") - 1,
+                            n_border, n_border, x, y);
+                        border->parent->local.scale =
+                            settings::Manager::GetSingleton()->Get("fBorderScale");
+                    }
+                    else
+                    {
+                        border->parent->local.scale = 0;
+                        // if borders are disabled, we're done
+                        return;
+                    }
+                }
 
                 // offset icon due to map edge
                 constexpr float maximum_border_offset = 0.2;
@@ -68,9 +125,6 @@ namespace mapmarker
                 edge_overlap.y += (float)y * 0.6;
 
                 helper::SetUvUnique(border, edge_overlap.x, edge_overlap.y);
-
-                border->parent->local.scale =
-                    settings::Manager::GetSingleton()->Get("fBorderScale");
             }
         }
         else { SKSE::log::error("Map marker creation failed"); }
@@ -80,12 +134,14 @@ namespace mapmarker
     {
         if (model && model->Get3D())
         {
-            auto icon_coords = WorldToMap(a_pos, owner);
+            auto icon_coords = WorldToMap(a_pos, Manager::GetSingleton()->GetActiveMap());
 
-            if (TestPointBox2D(icon_coords, { 0, 0 }, { kMapWidth, kMapHeight }))
+            if (TestPointBox2D(
+                    icon_coords, { kMapLowerWidth, kMapLowerHeight }, { kMapWidth, kMapHeight }))
             {
+                // using player scale since it's the only one that updates
                 auto radius = model->Get3D()->local.scale *
-                    settings::Manager::GetSingleton()->Get("fBorderScale");
+                    settings::Manager::GetSingleton()->Get("fPlayerScale");
 
                 edge_overlap = TestOverlap(icon_coords, radius);
                 if (edge_overlap != RE::NiPoint2(0, 0))
@@ -93,27 +149,30 @@ namespace mapmarker
                     if (auto border = model->Get3D()->GetObjectByName("Border"))
                     {
                         int x, y;
-                        helper::Arrayize(settings::Manager::GetSingleton()->Get("iBorderStyle"),
+                        // hardcoding player, should be switching on type but non-player markers never update
+                        helper::Arrayize(settings::Manager::GetSingleton()->Get("iPlayerStyle"),
                             n_border, n_border, x, y);
 
                         // offset icon due to map edge
                         constexpr float maximum_border_offset = 0.2;
 
-                        // translation is opposite sign of uv offset
-                        border->local.translate.x -= edge_overlap.x;
-                        border->local.translate.y -= edge_overlap.y;
+                        border->local.translate.x = edge_overlap.x;
+                        // y translation is opposite sign of uv offset
+                        border->local.translate.y = -edge_overlap.y;
 
                         // select icon from atlas
                         edge_overlap *= maximum_border_offset;
                         edge_overlap.x += (float)x * 0.6;
                         edge_overlap.y += (float)y * 0.6;
 
-                        helper::SetUvUnique(border, edge_overlap.x, edge_overlap.y);
+                        helper::SetUVCoords(border, edge_overlap.x, edge_overlap.y);
                     }
                 }
 
                 RE::NiUpdateData ctx;
-                model->Get3D()->local = MapToHand(icon_coords, owner->isLeft);
+                auto xform = Manager::GetSingleton()->MapToHand(icon_coords, owner->isLeft, false);
+                model->Get3D()->local.translate = xform.translate;
+                model->Get3D()->local.rotate = xform.rotate;
                 model->Get3D()->Update(ctx);
             }
         }
@@ -123,12 +182,14 @@ namespace mapmarker
     {
         if (active_map)
         {
+            _DEBUGLOG("Adding marker with world position: {} {}", a_world_pos.x, a_world_pos.y);
             auto icon_coords = WorldToMap(a_world_pos, active_map);
 
             _DEBUGLOG("  local map coords: {} {}", icon_coords.x, icon_coords.y);
 
             // Don't add markers that would be off the map
-            if (TestPointBox2D(icon_coords, { 0, 0 }, { kMapWidth, kMapHeight }))
+            if (TestPointBox2D(
+                    icon_coords, { kMapLowerWidth, kMapLowerHeight }, { kMapWidth, kMapHeight }))
             {
                 auto icon_transform = MapToHand(icon_coords, active_map->isLeft);
 
@@ -144,10 +205,18 @@ namespace mapmarker
                 switch (a_type)
                 {
                 case MapIcon::IconType::kPlayer:
+                    if (settings::Manager::GetSingleton()->Get("iPlayerStyle") < 4)
+                    {
+                        a_type = MapIcon::IconType::kPlayerAlt;
+                    }
                     player_marker =
                         std::make_unique<MapIcon>(a_type, active_map, icon_transform, overlap);
                     break;
                 case MapIcon::IconType::kCustom:
+                    if (settings::Manager::GetSingleton()->Get("iCustomStyle") < 4)
+                    {
+                        a_type = MapIcon::IconType::kCustomAlt;
+                    }
                     custom_marker =
                         std::make_unique<MapIcon>(a_type, active_map, icon_transform, overlap);
                     break;
@@ -156,9 +225,10 @@ namespace mapmarker
                         std::make_unique<MapIcon>(a_type, active_map, icon_transform, overlap));
                 }
 
-                _DEBUGLOG(" Marker added with local position: {} {} {}",
+                _DEBUGLOG("  Marker added with hand transform: {} {} {}",
                     VECTOR(icon_transform.translate));
             }
+            else { _DEBUGLOG("  marker outside map limits"); }
         }
     }
 
@@ -180,7 +250,11 @@ namespace mapmarker
 
     void Manager::OnPlayerEquip(RE::FormID a_equipitem, bool a_equipped)
     {
-        if (IsMap(a_equipitem)) { Refresh(); }
+        if (IsMap(a_equipitem))
+        {
+            if (a_equipped) { Refresh(); }
+            else { Clear(); }
+        }
         else if (a_equipitem == kSpellID && state != State::kInactive)
         {
             if (a_equipped)
@@ -213,11 +287,15 @@ namespace mapmarker
     bool Manager::FindActiveMap()
     {
         RE::FormID mapform = NULL;
-        if (auto right_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kRightMapSlot))
+        if (auto right_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kRightMapSlot);
+            right_worn && (right_worn->formID & 0xffff) != 0xe09d &&
+            (right_worn->formID & 0xffff) != 0x0d62)
         {
             mapform = right_worn->formID;
         }
-        else if (auto left_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kLeftMapSlot))
+        else if (auto left_worn = RE::PlayerCharacter::GetSingleton()->GetWornArmor(kLeftMapSlot);
+                 left_worn && (left_worn->formID & 0xffff) != 0xe09d &&
+                 (left_worn->formID & 0xffff) != 0x0d62)
         {
             mapform = left_worn->formID;
         }
@@ -228,21 +306,19 @@ namespace mapmarker
                 it != g_map_lookup.end())
             {
                 active_map = &(*it);
+                _DEBUGLOG("Equipped map: {:x}", mapform);
                 return true;
             }
         }
+        _DEBUGLOG("No map equipped");
         active_map = nullptr;
         return false;
     }
 
     void Manager::Refresh()
     {
-        state = State::kInactive;
-        active_objectives.clear();
-        seen_targets.clear();
-        icon_addons.clear();
-        custom_marker.reset();
-        player_marker.reset();
+        Clear();
+        z_offset_count = 0;
 
         if (FindActiveMap())
         {
@@ -263,6 +339,16 @@ namespace mapmarker
         }
     }
 
+    void Manager::Clear()
+    {
+        state = State::kInactive;
+        active_objectives.clear();
+        seen_targets.clear();
+        icon_addons.clear();
+        custom_marker.reset();
+        player_marker.reset();
+    }
+
     void Manager::ProcessCompassMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_pos)
     {
         // Stop if we've already seen this quest target
@@ -276,18 +362,33 @@ namespace mapmarker
         }
         seen_targets.push_back((uintptr_t)a_target);
 
+        //_DEBUGLOG(a_target.)
+
         for (auto obj : active_objectives)
         {
             for (uint32_t i = 0; i < obj->numTargets; ++i)
             {
                 if (obj->targets[i] == a_target)
                 {
-                    // _DEBUGLOG("Adding quest marker for {}", obj->ownerQuest->fullName);
+                    if (obj->ownerQuest)
+                    {
+                        try
+                        {
+                            _DEBUGLOG("Quest marker: [{}] {:.30}", obj->ownerQuest->formEditorID,
+                                obj->displayText.c_str()
+                                //ownerQuest->aliases[a_target->alias]->aliasName
+                            );
+                        } catch (std ::exception)
+                        {
+                            _DEBUGLOG("Exception when printing quest ");
+                        }
+                    }
+                    else { _DEBUGLOG("Quest marker added with no parent quest"); }
 
-                    auto t = MapIcon::GetIconType(obj->ownerQuest->GetType());
+                    auto type = MapIcon::GetIconType(obj->ownerQuest->GetType());
 
                     SKSE::GetTaskInterface()->AddTask(
-                        [a_pos, t]() { Manager::GetSingleton()->AddMarker(a_pos, t); });
+                        [a_pos, type]() { Manager::GetSingleton()->AddMarker(a_pos, type); });
 
                     return;
                 }
@@ -351,9 +452,11 @@ namespace mapmarker
                     [a_form](auto& m) { return (m.armor_form & 0xFFF) == (a_form & 0xFFF); });
                 it != g_map_lookup.end())
             {
+                _DEBUGLOG("Form {:x} is a map", a_form);
                 return true;
             }
         }
+        _DEBUGLOG("Form {:x} is NOT a map", a_form);
         return false;
     }
 
@@ -377,7 +480,8 @@ namespace mapmarker
         return result;
     }
 
-    RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft)
+    RE::NiTransform Manager::MapToHand(
+        RE::NiPoint2 a_coords, bool isLeft, bool a_progressive_offset)
     {
         // Transform from hand to map "origin node"
         const RE::NiPoint3  lpos = { -1.261147, -4.375540, 9.100316 };
@@ -395,15 +499,20 @@ namespace mapmarker
 
         RE::NiTransform result;
 
+        // fix for z fighting, there's a max of 18 markers
+        float z_offset = 0.05f;
+        if (a_progressive_offset) { z_offset += (z_offset_count++ % 18) * 0.004; }
+
         // Put the map coordinates into local hand space
         if (isLeft)
         {
-            result.translate = lpos + lrot * RE::NiPoint3(a_coords.x, a_coords.y, 0.05f);
+            result.translate = lpos + lrot * RE::NiPoint3(a_coords.x, a_coords.y, z_offset);
             result.rotate = lrot;
         }
         else
         {
-            result.translate = rpos + rrot * RE::NiPoint3(a_coords.x - 39.5, a_coords.y, 0.05f);
+            result.translate =
+                rpos + rrot * RE::NiPoint3(a_coords.x - kRightHandOffsetX, a_coords.y, z_offset);
             result.rotate = rrot;
         }
 
@@ -417,7 +526,7 @@ namespace mapmarker
         {
             result.x = -right_overlap / a_radius;
         }
-        else if (auto left_overlap = a_coords.x - a_radius; left_overlap < 0)
+        else if (auto left_overlap = a_coords.x - a_radius - kMapLowerWidth; left_overlap < 0)
         {
             result.x = -left_overlap / a_radius;
         }
@@ -438,5 +547,4 @@ namespace mapmarker
     {
         return a_map->location_form == HoldLocations::Solstheim;
     }
-
 }

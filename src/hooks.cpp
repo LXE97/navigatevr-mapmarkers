@@ -36,16 +36,16 @@ namespace hooks
                     // original quest compass update function
                     mov(rax, UpdateQuestHookedFuncAddr);
                     call(rax);
-
                     // After it returns, the quest target is in rbx and the marker pos is at rsp-0x78
-                    // I don't know how to refer to these and stop them from being clobbered so I save
+                    
                     push(rax);
+                    push(rdx);
 
-                    movss(xmm0, ptr[rsp - 0x70]);
+                    movss(xmm0, ptr[rsp - 0x68]);
                     mov(rax, (uintptr_t)&g_marker_x);
                     movss(ptr[rax], xmm0);
 
-                    movss(xmm0, ptr[rsp - 0x6C]);
+                    movss(xmm0, ptr[rsp - 0x64]);
                     mov(rax, (uintptr_t)&g_marker_y);
                     movss(ptr[rax], xmm0);
 
@@ -54,6 +54,7 @@ namespace hooks
 
                     call(ptr[rip + hookLabel]);
 
+                    pop(rdx);
                     pop(rax);
 
                     jmp(ptr[rip + retnLabel]);

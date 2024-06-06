@@ -95,6 +95,7 @@ namespace vrmapmarkers
         if (event->actor &&
             event->actor.get() == RE::PlayerCharacter::GetSingleton()->AsReference())
         {
+            _DEBUGLOG("player {}: {:x}",  event->equipped? "equipped" : "unequiped", event->baseObject)
             mapmarker::Manager::GetSingleton()->OnPlayerEquip(event->baseObject, event->equipped);
         }
     }

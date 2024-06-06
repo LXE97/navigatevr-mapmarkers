@@ -63,7 +63,9 @@ namespace mapmarker
             kStormcloak,
             kDawnguard,
             kPlayer,
-            kCustom
+            kCustom,
+            kPlayerAlt,
+            kCustomAlt
         };
 
         MapIcon(MapIcon::IconType a_type, const HeldMap* a_map, RE::NiTransform& a_transform,
@@ -89,14 +91,14 @@ namespace mapmarker
         const HeldMap* owner = nullptr;
 
     private:
-        static constexpr const char* icon_path = "NavigateVRmarkers/mapmarker.nif";
+        static constexpr const char* kIconPath = "NavigateVRmarkers/mapmarker.nif";
+        static constexpr const char* kIconPathAlt = "NavigateVRmarkers/mapmarkeralt.nif";
         static constexpr int         n_border = 2;
 
         void OnCreation();
 
         art_addon::ArtAddonPtr model = nullptr;
-        int                    type;
-        bool                   global = false;
+        IconType               type;
         RE::NiPoint2           edge_overlap;
     };
 
@@ -122,6 +124,8 @@ namespace mapmarker
 
         bool FindActiveMap();
 
+        const HeldMap* GetActiveMap() const { return active_map; }
+
         void FindActiveObjectives();
 
         void ProcessCompassMarker(RE::TESQuestTarget* a_target, RE::NiPoint2 a_pos);
@@ -132,7 +136,11 @@ namespace mapmarker
 
         void Refresh();
 
+        void Clear();
+
         bool IsMap(RE::FormID) const;
+
+        RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft, bool a_progressive_offset = true);
 
     private:
         Manager() = default;
@@ -155,13 +163,14 @@ namespace mapmarker
         const HeldMap*                        active_map = nullptr;
         std::unique_ptr<MapIcon>              custom_marker;
         std::unique_ptr<MapIcon>              player_marker;
+        int                                   z_offset_count = 0;
     };
 
     bool TestPointBox2D(RE::NiPoint2 a_point, RE::NiPoint2 bottom_left, RE::NiPoint2 top_right);
 
     RE::NiPoint2 WorldToMap(RE::NiPoint2 a_world_pos, const HeldMap* a_map);
 
-    RE::NiTransform MapToHand(RE::NiPoint2 a_coords, bool isLeft);
+    
 
     RE::NiPoint2 TestOverlap(RE::NiPoint2& a_coords, float a_radius);
 
